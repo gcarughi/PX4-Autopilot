@@ -123,7 +123,7 @@ private:
 	uORB::Subscription _actuator_out_sub{ORB_ID(actuator_outputs)};
 
 	// hard constants
-	static constexpr uint16_t NB_MOTORS = 4;
+	static constexpr uint16_t NB_MOTORS = 6;               // rotor speeds (4), tilt angles (2), control surfaces(5)
 	static constexpr float T1_C = 15.0f;                        // ground temperature in celcius
 	static constexpr float T1_K = T1_C - CONSTANTS_ABSOLUTE_NULL_CELSIUS;   // ground temperature in Kelvin
 	static constexpr float TEMP_GRADIENT  = -6.5f / 1000.0f;    // temperature gradient in degrees per metre
@@ -153,9 +153,9 @@ private:
 	float       _dt;            // sampling time [s]
 	bool        _grounded{true};// whether the vehicle is on the ground
 
-	matrix::Vector3f    _T_B;           // thrust force in body frame [N]
-	matrix::Vector3f    _Fa_I;          // aerodynamic force in inertial frame [N]
-	matrix::Vector3f    _Mt_B;          // thruster moments in the body frame [Nm]
+	matrix::Vector3f    _Ft_B;          // thrust force in body frame [N]
+	matrix::Vector3f    _Fa_B;          // aerodynamic force in body frame [N]
+	matrix::Vector3f    _Mt_B;          // thrust moments in the body frame [Nm]
 	matrix::Vector3f    _Ma_B;          // aerodynamic moments in the body frame [Nm]
 	matrix::Vector3f    _p_I;           // inertial position [m]
 	matrix::Vector3f    _v_I;           // inertial velocity [m/s]
@@ -167,7 +167,7 @@ private:
 	matrix::Vector3f    _w_B;           // body rates in body frame [rad/s]
 	matrix::Quatf       _q_dot;         // quaternion differential
 	matrix::Vector3f    _w_B_dot;       // body rates differential
-	float       _u[NB_MOTORS];  // thruster signals
+	float       _u[NB_MOTORS];  // motor signals
 
 
 	// sensors reconstruction
@@ -184,9 +184,9 @@ private:
 	// parameters
 	float _MASS, _T_MAX, _Q_MAX, _L_ROLL, _L_PITCH, _KDV, _KDW, _H0;
 	double _LAT0, _LON0, _COS_LAT0;
-	matrix::Vector3f _W_I;  // weight of the vehicle in inertial frame [N]
+	matrix::Vector3f _G_I;  // gravity vector of the vehicle in inertial frame [N]
 	matrix::Matrix3f _I;    // vehicle inertia matrix
-	matrix::Matrix3f _Im1;  // inverse of the intertia matrix
+	matrix::Matrix3f _I_inv;  // inverse of the intertia matrix
 	matrix::Vector3f _mu_I; // NED magnetic field in inertial frame [G]
 
 	// parameters defined in sih_params.c

@@ -137,6 +137,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_att_pos_mocap(msg);
 		break;
 
+    case MAVLINK_MSG_ID_MPC_COMMAND:
+		handle_message_mpc_command(msg);
+		break;
+
 	case MAVLINK_MSG_ID_SET_POSITION_TARGET_LOCAL_NED:
 		handle_message_set_position_target_local_ned(msg);
 		break;
@@ -760,6 +764,27 @@ MavlinkReceiver::handle_message_att_pos_mocap(mavlink_message_t *msg)
 	mocap_odom.velocity_covariance[0] = NAN;
 
 	_mocap_odometry_pub.publish(mocap_odom);
+}
+
+void
+MavlinkReceiver::handle_message_mpc_command(mavlink_message_t *msg)
+{
+    mavlink_mpc_command_t mavlink_msg;
+    mavlink_msg_mpc_command_decode(msg, &mavlink_msg);
+
+    struct mpc_command_s orb_msg = {};
+    orb_msg.timestamp   = mavlink_msg.time_usec;
+    orb_msg.thrust      = mavlink_msg.thrust;
+    orb_msg.tilt_angle  = mavlink_msg.tilt_angle;
+    orb_msg.torque_x    = mavlink_msg.torque_x;
+    orb_msg.torque_y    = mavlink_msg.torque_y;
+    orb_msg.torque_z    = mavlink_msg.torque_z;
+
+    if ( _mpc_command_pub == nullptr ){
+        _mpc_command_pub = orb_advertise(ORB_ID(mpc_command), &orb_msg);
+    } else {
+        orb_publish(ORB_ID(mpc_command), _mpc_command_pub, &orb_msg);
+    }
 }
 
 void

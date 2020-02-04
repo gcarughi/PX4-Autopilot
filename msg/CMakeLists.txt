@@ -80,6 +80,7 @@ set(msg_files
 	mission.msg
 	mission_result.msg
 	mount_orientation.msg
+    mpc_command.msg
 	multirotor_motor_limits.msg
 	obstacle_distance.msg
 	offboard_control_mode.msg

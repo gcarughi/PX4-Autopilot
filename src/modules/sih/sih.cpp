@@ -203,14 +203,14 @@ void Sih::parameters_updated()
 
 	_MASS = _sih_mass.get();
 
-	_W_I = Vector3f(0.0f, 0.0f, _MASS * CONSTANTS_ONE_G);
+	_G_I = Vector3f(0.0f, 0.0f, _MASS * CONSTANTS_ONE_G);
 
 	_I = diag(Vector3f(_sih_ixx.get(), _sih_iyy.get(), _sih_izz.get()));
 	_I(0, 1) = _I(1, 0) = _sih_ixy.get();
 	_I(0, 2) = _I(2, 0) = _sih_ixz.get();
 	_I(1, 2) = _I(2, 1) = _sih_iyz.get();
 
-	_Im1 = inv(_I);
+	_I_inv = inv(_I);
 
 	_mu_I = Vector3f(_sih_mu_x.get(), _sih_mu_y.get(), _sih_mu_z.get());
 }
@@ -257,12 +257,15 @@ void Sih::read_motors()
 // generate the motors thrust and torque in the body frame
 void Sih::generate_force_and_torques()
 {
-	_T_B = Vector3f(0.0f, 0.0f, -_T_MAX * (+_u[0] + _u[1] + _u[2] + _u[3]));
+    //_Ft_B = Thrust + ind. Drag 
+    //_Mt_B = arm times (Thrust + ind. Drag ) + resisting torque + gyroscopic torque
+    //matrix::Vector3f T_temp;
+	_Ft_B = Vector3f(0.0f, 0.0f, -_T_MAX * (+_u[0] + _u[1] + _u[2] + _u[3]));
 	_Mt_B = Vector3f(_L_ROLL * _T_MAX * (-_u[0] + _u[1] + _u[2] - _u[3]),
 			 _L_PITCH * _T_MAX * (+_u[0] - _u[1] + _u[2] - _u[3]),
 			 _Q_MAX * (+_u[0] + _u[1] - _u[2] - _u[3]));
 
-	_Fa_I = -_KDV * _v_I;   // first order drag to slow down the aircraft
+	_Fa_B = -_KDV * _v_I;   // first order drag to slow down the aircraft
 	_Ma_B = -_KDW * _w_B;   // first order angular damper
 }
 
@@ -273,9 +276,9 @@ void Sih::equations_of_motion()
 
 	// Equations of motion of a rigid body
 	_p_I_dot = _v_I;                        // position differential
-	_v_I_dot = (_W_I + _Fa_I + _C_IB * _T_B) / _MASS;   // conservation of linear momentum
+	_v_I_dot = (_G_I + _C_IB * (_Fa_B + _Ft_B)) / _MASS;   // conservation of linear momentum
 	_q_dot = _q.derivative1(_w_B);              // attitude differential
-	_w_B_dot = _Im1 * (_Mt_B + _Ma_B - _w_B.cross(_I * _w_B)); // conservation of angular momentum
+	_w_B_dot = _I_inv * (_Mt_B + _Ma_B - _w_B.cross(_I * _w_B)); // conservation of angular momentum
 
 	// fake ground, avoid free fall
 	if (_p_I(2) > 0.0f && (_v_I_dot(2) > 0.0f || _v_I(2) > 0.0f)) {

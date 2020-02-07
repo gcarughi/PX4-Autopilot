@@ -773,7 +773,7 @@ MavlinkReceiver::handle_message_mpc_command(mavlink_message_t *msg)
     mavlink_msg_mpc_command_decode(msg, &mavlink_msg);
 
     struct mpc_command_s orb_msg = {};
-    orb_msg.timestamp   = mavlink_msg.time_usec;
+    orb_msg.timestamp   = hrt_absolute_time();
     orb_msg.thrust      = mavlink_msg.thrust;
     orb_msg.tilt_angle  = mavlink_msg.tilt_angle;
     orb_msg.torque_x    = mavlink_msg.torque_x;

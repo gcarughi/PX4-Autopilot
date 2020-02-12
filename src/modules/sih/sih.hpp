@@ -123,7 +123,7 @@ private:
 	uORB::Subscription _actuator_out_sub{ORB_ID(actuator_outputs)};
 
 	// hard constants
-	static constexpr uint16_t NB_MOTORS = 6;               // rotor speeds (4), tilt angles (2), control surfaces(5)
+	static constexpr uint16_t NB_MOTORS = 9;               // rotor speeds (4), tilt angles (2), control surfaces(3)
 	static constexpr float T1_C = 15.0f;                        // ground temperature in celcius
 	static constexpr float T1_K = T1_C - CONSTANTS_ABSOLUTE_NULL_CELSIUS;   // ground temperature in Kelvin
 	static constexpr float TEMP_GRADIENT  = -6.5f / 1000.0f;    // temperature gradient in degrees per metre
@@ -133,6 +133,8 @@ private:
 	void init_sensors();
 	void read_motors();
 	void generate_force_and_torques();
+	void generate_force_and_torques_vtol();
+    void compute_aero_coeff(float* C_D, float* C_L, const int surf, const float AoA);
 	void equations_of_motion();
 	void reconstruct_sensors_signals();
 	void send_IMU();
@@ -167,6 +169,7 @@ private:
 	matrix::Vector3f    _w_B;           // body rates in body frame [rad/s]
 	matrix::Quatf       _q_dot;         // quaternion differential
 	matrix::Vector3f    _w_B_dot;       // body rates differential
+    matrix::Vector2f    chi;            // tilt angles [rad]
 	float       _u[NB_MOTORS];  // motor signals
 
 
@@ -188,6 +191,54 @@ private:
 	matrix::Matrix3f _I;    // vehicle inertia matrix
 	matrix::Matrix3f _I_inv;  // inverse of the intertia matrix
 	matrix::Vector3f _mu_I; // NED magnetic field in inertial frame [G]
+
+    /*
+     * vehicle data
+     */
+    // dimensions and rotor positions
+    float L_0;
+    float l_1;
+    float l_3;
+    float l_4;
+    float h_0;
+    float h_1;
+    float b;   
+    float c_bar;
+
+    matrix::Matrix<float,3,4> d_i;
+    matrix::Matrix<float,3,4> d_ei;
+    matrix::Vector3f d_ri;
+
+    float rho;
+
+    // actuator ranges
+    float chi_max;
+    float chi_min;
+    float delta_max;
+    float delta_min;
+
+    //aerodynamic surfaces
+    float S_W;
+    float S_Fn, S_Fe, S_Fd;
+    float S_E;
+    float S_R;
+
+    float S_S;
+
+    // aerodynamic coefficients
+    // columns: wing, fuselage, elevator, rudder
+    // rows: k, a_stall, c_l0, c_la, c_d0, c_da, c_1, c_0
+    matrix::Matrix<float,8,4> aero_coeff;
+
+    float C_La;
+    float C_Me;
+    float C_Nr;
+
+    // position of aerodynamic surfaces
+    // columns: wing right, wing left, fuselage, elevator, rudder
+    // rows: p_x, p_y, p_z
+    matrix::Matrix<float,3,5> aero_pos;
+
 
 	// parameters defined in sih_params.c
 	DEFINE_PARAMETERS(

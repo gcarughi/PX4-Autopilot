@@ -50,7 +50,7 @@
  * @increment 0.1
  * @group Simulation In Hardware
  */
-PARAM_DEFINE_FLOAT(SIH_MASS, 1.0f);
+PARAM_DEFINE_FLOAT(SIH_MASS, 2.7f);
 
 /**
  * Vehicle inertia about X axis
@@ -64,7 +64,7 @@ PARAM_DEFINE_FLOAT(SIH_MASS, 1.0f);
  * @increment 0.005
  * @group Simulation In Hardware
  */
-PARAM_DEFINE_FLOAT(SIH_IXX, 0.025f);
+PARAM_DEFINE_FLOAT(SIH_IXX, 0.1f);
 
 /**
  * Vehicle inertia about Y axis
@@ -78,7 +78,7 @@ PARAM_DEFINE_FLOAT(SIH_IXX, 0.025f);
  * @increment 0.005
  * @group Simulation In Hardware
  */
-PARAM_DEFINE_FLOAT(SIH_IYY, 0.025f);
+PARAM_DEFINE_FLOAT(SIH_IYY, 0.1f);
 
 /**
  * Vehicle inertia about Z axis
@@ -92,7 +92,7 @@ PARAM_DEFINE_FLOAT(SIH_IYY, 0.025f);
  * @increment 0.005
  * @group Simulation In Hardware
  */
-PARAM_DEFINE_FLOAT(SIH_IZZ, 0.030f);
+PARAM_DEFINE_FLOAT(SIH_IZZ, 0.1f);
 
 /**
  * Vehicle cross term inertia xy
@@ -147,7 +147,7 @@ PARAM_DEFINE_FLOAT(SIH_IYZ, 0.0f);
  * @increment 0.5
  * @group Simulation In Hardware
  */
-PARAM_DEFINE_FLOAT(SIH_T_MAX, 5.0f);
+PARAM_DEFINE_FLOAT(SIH_T_MAX, 12.74f);
 
 /**
  * Max propeller torque
@@ -163,7 +163,7 @@ PARAM_DEFINE_FLOAT(SIH_T_MAX, 5.0f);
  * @increment 0.05
  * @group Simulation In Hardware
  */
-PARAM_DEFINE_FLOAT(SIH_Q_MAX, 0.1f);
+PARAM_DEFINE_FLOAT(SIH_Q_MAX, 0.0178f);
 
 /**
  * Roll arm length

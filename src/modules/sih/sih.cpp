@@ -149,7 +149,8 @@ void Sih::inner_loop()
 
 	read_motors();
 
-	generate_force_and_torques();
+	//generate_force_and_torques();
+	generate_force_and_torques_vtol();
 
 	equations_of_motion();
 
@@ -226,6 +227,69 @@ void Sih::init_variables()
 	_w_B = Vector3f(0.0f, 0.0f, 0.0f);
 
 	_u[0] = _u[1] = _u[2] = _u[3] = 0.0f;
+    
+    /*
+     * vehicle data
+     */
+    // dimensions and rotor positions
+    L_0    = 0.29f;
+    l_1    = 0.1575f;
+    l_3    = 0.105f;
+    l_4    = 0.105f;
+    h_0    = 0.015f;
+    h_1    = 0.05f;
+    b      = 2.0f;
+    c_bar  = 0.2f;
+
+    d_i(0,0) = -l_3;    d_i(0,1) = l_4;     d_i(0,2) = l_4;     d_i(0,3) = -l_3;
+    d_i(1,0) = L_0;     d_i(1,1) = L_0;     d_i(1,2) = -L_0;     d_i(1,3) = -L_0;
+    d_i(2,0) = -h_0;    d_i(2,1) = -h_0;    d_i(2,2) = -h_0;    d_i(2,3) = -h_0;
+
+    d_ei(0,0) = -l_1;   d_ei(0,1) = l_1;    d_ei(0,2) = l_1;    d_ei(0,3) = -l_1;
+    d_ei(1,0) = 0.0f;   d_ei(1,1) = 0.0f;   d_ei(1,2) = 0.0f;   d_ei(1,3) = 0.0f;
+    d_ei(2,0) = -h_1;   d_ei(2,1) = -h_1;   d_ei(2,2) = -h_1;   d_ei(2,3) = -h_1;
+
+    d_ri.setZero();
+
+    rho = 1.2f;
+
+    //actuator ranges
+    chi_max     = math::radians(90.0f); 
+    chi_min     = math::radians(-10.0f);
+    delta_max   = math::radians(35.0f); 
+    delta_min   = math::radians(-35.0f); 
+
+    //aerodynamic surfaces
+    S_W = 0.4266f;
+    S_Fn= 0.011f;
+    S_Fe= 0.055f;
+    S_Fd= 0.055f;
+    S_E = 0.0465f;
+    S_R = 0.0744f;
+
+    S_S = 0.4266f;
+
+    //aerodynamic coefficients
+    float coeff_W[8]{20.0f,0.227f,0.25f,5.62f,0.03f,0.2f,1.0f,0.025f};
+    float coeff_F[8]{20.0f,0.0f,0.0f,0.0f,1.28f,0.0f,0.0f,1.28f};
+    float coeff_E[8]{1.0f,0.698f,0.0f,0.885f,0.0f,1.2354f,0.3137f,0.0f};
+    float coeff_R[8]{1.0f,0.698f,0.0f,0.885f,0.0f,1.2354f,0.3137f,0.0f};
+
+    aero_coeff.col(0) = Vector<float,8>(coeff_W);
+    aero_coeff.col(1) = Vector<float,8>(coeff_F);
+    aero_coeff.col(2) = Vector<float,8>(coeff_E);
+    aero_coeff.col(3) = Vector<float,8>(coeff_R);
+
+    C_La = 0.058649f;
+    C_Me = 0.55604f;
+    C_Nr = 0.055604f;
+
+    //position of aerodynamic surfaces
+    aero_pos.col(0) = Vector3f( 0.0f, 0.5f, -0.015f );    // right wing
+    aero_pos.col(1) = Vector3f( 0.0f, -0.5f, -0.015f );   // left wing
+    aero_pos.col(2) = Vector3f( 0.036f, 0.0f, 0.025f );   // fuselage
+    aero_pos.col(3) = Vector3f( -0.71f, 0.0f, -0.015f );  // elevator
+    aero_pos.col(4) = Vector3f( -0.71f, 0.0f, -0.04f );   // rudder
 }
 
 void Sih::init_sensors()
@@ -251,6 +315,8 @@ void Sih::read_motors()
 		for (int i = 0; i < NB_MOTORS; i++) { // saturate the motor signals
 			_u[i] = constrain((actuators_out.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN), 0.0f, 1.0f);
 		}
+        //printf("_u: %f %f %f %f\n", (double)actuators_out.output[0], (double)actuators_out.output[1], (double)actuators_out.output[2], (double)actuators_out.output[3]);
+        //printf("_u: %f %f %f %f\n", (double)_u[0], (double)_u[1], (double)_u[2], (double)_u[3]);
 	}
 }
 
@@ -265,8 +331,191 @@ void Sih::generate_force_and_torques()
 			 _L_PITCH * _T_MAX * (+_u[0] - _u[1] + _u[2] - _u[3]),
 			 _Q_MAX * (+_u[0] + _u[1] - _u[2] - _u[3]));
 
+    //printf("_Ft_B: %f,%f,%f\n",(double)_Ft_B(0),(double)_Ft_B(1),(double)_Ft_B(2));
+
 	_Fa_B = -_KDV * _v_I;   // first order drag to slow down the aircraft
 	_Ma_B = -_KDW * _w_B;   // first order angular damper
+
+    //printf("_u: %f %f %f %f\n", (double)_u[0], (double)_u[1], (double)_u[2], (double)_u[3]);
+}
+
+// generate the motors thrust and torque in the body frame
+void Sih::generate_force_and_torques_vtol()
+{
+    /*
+     * compute rotor forces and moments
+     * note: _u[i] are PWM values in [0,1] 
+     * we assume that the rotor thrusts are given as T[i] = _T_MAX * _u[i]
+     * and the induced torques as Q[i] = _Q_MAX * _T_MAX * _u[i], where
+     * _Q_MAX is specified as _Q_MAX = C_Q / C_T
+     */
+
+    //printf("u: %f %f %f %f\n", (double)_u[6], (double)_u[7],(double)_u[8],(double)_u[9]);
+    float chi_r     = _u[4] * (chi_max - chi_min) + chi_min;
+    float chi_l     = _u[5] * (chi_max - chi_min) + chi_min;
+    float delta_a   = _u[6] * (delta_min - delta_max) + delta_max;
+    float delta_e   = _u[7] * (delta_max - delta_min) + delta_min;
+    float delta_r   = _u[8] * (delta_max - delta_min) + delta_min;
+    //printf("u chi in sih: %f %f\n", (double)_u[4],(double)_u[5]);
+    //printf("chi in sih: %f %f\n", (double)chi_r,(double)chi_l);
+    Dcmf R_chir(AxisAngle<float>(Vector3f(0,1,0), -chi_r));
+    Dcmf R_chil(AxisAngle<float>(Vector3f(0,1,0), -chi_l));
+
+    //printf("R_chir\n");
+    //printf("%f %f %f\n",(double)R_chir(0,0),(double)R_chir(0,1),(double)R_chir(0,2));
+    //printf("%f %f %f\n",(double)R_chir(1,0),(double)R_chir(1,1),(double)R_chir(1,2));
+    //printf("%f %f %f\n\n",(double)R_chir(2,0),(double)R_chir(2,1),(double)R_chir(2,2));
+
+
+
+    Dcmf R_chi;
+
+    // forces and moments
+    Vector3f _T;
+    Vector3f _Q;
+    _Ft_B.setZero();
+    _Mt_B.setZero();
+
+    for( int i=0; i<4; i++){
+        if( i < 2){
+            R_chi = R_chir;
+        } else {
+            R_chi = R_chil;
+        }
+
+        d_ri    = Vector3f( d_i.col(i) ) + R_chi * Vector3f( d_ei.col(i) );
+        _T      = - _T_MAX * _u[i] * Vector3f( R_chi.col(2) );
+        _Q      = _Q_MAX * _T_MAX * _u[i] * Vector3f( R_chi.col(2) );
+
+        _Ft_B += _T;
+        _Mt_B += (float)std::pow(-1,i+1)*_Q + d_ri.cross( _T );
+
+    }
+    //printf("_T_MAX: %f\n",(double)_T_MAX);
+    //printf("_Ft_B: %f,%f,%f\n",(double)_Ft_B(0),(double)_Ft_B(1),(double)_Ft_B(2));
+    //printf("_Mt_B: %f,%f,%f\n",(double)_Mt_B(0),(double)_Mt_B(1),(double)_Mt_B(2));
+    //printf("_u: %f %f %f %f\n", (double)_u[0], (double)_u[1], (double)_u[2], (double)_u[3]);
+    //printf("\n");
+
+    
+    /*
+     * compute aerodynamic forces and moments
+     */
+    _Fa_B.setZero();
+    _Ma_B.setZero();
+
+    Vector3f v_a;
+    Vector3f F_a;
+    Vector3f M_a;
+    float AoA;
+    float c_d;
+    float c_l;
+
+    //right wing
+    v_a = _v_B + _w_B.cross( aero_pos.col(0) );
+    AoA = std::atan2( v_a(2), v_a(0) );
+    compute_aero_coeff( &c_d, &c_l, 0, AoA );
+
+    F_a = - 0.25f * rho * S_W * sqrtf( v_a(0) * v_a(0) + v_a(2) * v_a(2) ) *
+            ( v_a * c_d + Vector3f( -v_a(2), 0.0f, v_a(0) ) * c_l );
+    M_a = Vector3f( aero_pos.col(0) ).cross( F_a );
+
+    _Fa_B += F_a;
+    _Ma_B += M_a;
+
+    //left wing
+    v_a = _v_B + _w_B.cross( aero_pos.col(1) );
+    AoA = std::atan2( v_a(2), v_a(0) );
+    compute_aero_coeff( &c_d, &c_l, 0, AoA );
+
+    F_a = - 0.25f * rho * S_W * sqrtf( v_a(0) * v_a(0) + v_a(2) * v_a(2) )
+            * ( v_a * c_d + Vector3f( -v_a(2), 0.0f, v_a(0) ) * c_l );
+    M_a = Vector3f( aero_pos.col(1) ).cross( F_a );
+
+    _Fa_B += F_a;
+    _Ma_B += M_a;
+
+    //fuselage
+    v_a = _v_B + _w_B.cross( aero_pos.col(2) );
+    compute_aero_coeff( &c_d, &c_l, 1, 0.0f );
+
+    F_a = - 0.5f * rho * c_d 
+        * diag( Vector3f(   S_Fn * std::abs(v_a(0)), 
+                            S_Fe * std::abs(v_a(1)), 
+                            S_Fd * std::abs(v_a(2)) 
+                         )) * v_a;
+    M_a = Vector3f( aero_pos.col(2) ).cross( F_a );
+
+    _Fa_B += F_a;
+    _Ma_B += M_a;
+
+    //elevator
+    v_a = _v_B + _w_B.cross( aero_pos.col(3) );
+    AoA = std::atan2( v_a(2), v_a(0) );
+    compute_aero_coeff( &c_d, &c_l, 2, AoA );
+
+    F_a = - 0.5f * rho * S_E * sqrtf( v_a(0) * v_a(0) + v_a(2) * v_a(2) )
+            * ( v_a * c_d + Vector3f( -v_a(2), 0.0f, v_a(0) ) * c_l );
+    M_a = Vector3f( aero_pos.col(3) ).cross( F_a );
+
+    _Fa_B += F_a;
+    _Ma_B += M_a;
+
+    //rudder
+    v_a = _v_B + _w_B.cross( aero_pos.col(4) );
+    AoA = std::atan2( v_a(1), v_a(0) );
+    compute_aero_coeff( &c_d, &c_l, 3, AoA );
+
+    F_a = - 0.5f * rho * S_R * sqrtf( v_a(0) * v_a(0) + v_a(1) * v_a(1) )
+            * ( v_a * c_d + Vector3f( -v_a(1), v_a(0), 0.0f ) * c_l );
+    M_a = Vector3f( aero_pos.col(4) ).cross( F_a );
+
+    _Fa_B += F_a;
+    _Ma_B += M_a;
+
+    //printf("_Fa_B: %f,%f,%f\n",(double)_Fa_B(0),(double)_Fa_B(1),(double)_Fa_B(2));
+    //printf("_Ma_B: %f,%f,%f\n",(double)_Ma_B(0),(double)_Ma_B(1),(double)_Ma_B(2));
+
+    /*
+     * control surfaces
+     */
+    //TODO
+    float q_bar     = 0.5f * rho * _v_B.norm() * _v_B.norm();
+    float L_delta   = C_La * S_S * b     * q_bar * delta_a;
+    float M_delta   = C_Me * S_S * c_bar * q_bar * delta_e;
+    float N_delta   = C_Nr * S_S * b     * q_bar * delta_r;
+
+    _Ma_B += Vector3f( L_delta, M_delta, N_delta );
+    
+
+}
+
+void Sih::compute_aero_coeff(float* C_D, float* C_L, const int surf, const float AoA)
+{
+    float k         = aero_coeff(0,surf);
+    float a_stall   = aero_coeff(1,surf);
+    float c_l0      = aero_coeff(2,surf);
+    float c_la      = aero_coeff(3,surf);
+    float c_d0      = aero_coeff(4,surf);
+    float c_da      = aero_coeff(5,surf);
+    float c_1       = aero_coeff(6,surf);
+    float c_0       = aero_coeff(7,surf);
+
+    // blending scale
+    float num = 1.0f + (float)std::tanh( k * ( a_stall * a_stall - AoA * AoA ) ); 
+    float den = 1.0f + (float)std::tanh( k * a_stall * a_stall );
+    float sigma = num / den;
+
+    // drag coefficient
+    float c_d = sigma * ( c_d0 + c_da * AoA * AoA ) +     
+                (1.0f - sigma) * ( c_0 + c_1 * sin( AoA ) * sin( AoA ) );
+
+    // lift coefficient
+    float c_l = sigma * ( c_l0 + c_la * AoA ) +     
+                (1.0f - sigma) * ( c_1 * sin( 2.0f * AoA ) );
+
+    *C_D = c_d;
+    *C_L = c_l;
 }
 
 // apply the equations of motion of a rigid body and integrate one step

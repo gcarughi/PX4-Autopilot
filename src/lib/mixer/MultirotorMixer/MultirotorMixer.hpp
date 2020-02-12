@@ -239,6 +239,14 @@ private:
 	 */
 	inline void mix_yaw(float yaw, float *outputs);
 
+	/**
+	 * Mix roll, pitch, yaw, thrust and set the outputs vector.
+	 *
+     * VTOL mixer to assign rotor thrusts and tilt angles
+	 */
+	inline void mix_vtol(float roll, float pitch, float yaw, float thrust, float *outputs);
+
+
 	void update_saturation_status(unsigned index, bool clipping_high, bool clipping_low_roll_pitch, bool clipping_low_yaw);
 
 	float				_roll_scale{1.0f};

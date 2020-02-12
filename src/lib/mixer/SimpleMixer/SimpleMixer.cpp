@@ -240,29 +240,78 @@ out:
 unsigned
 SimpleMixer::mix(float *outputs, unsigned space)
 {
-	float sum = 0.0f;
+    float M,N;
 
-	if (_pinfo == nullptr) {
-		return 0;
-	}
+    // note: rest is assigned in multirotor mixer
+    // TODO: check normalization
+    _control_cb(_cb_handle, 0, 1, M);
+    M = math::constrain(M, -6.0f, 6.0f);
 
-	if (space < 1) {
-		return 0;
-	}
+    _control_cb(_cb_handle, 0, 2, N);
+    N = math::constrain(N, -6.0f, 6.0f);
 
-	for (unsigned i = 0; i < _pinfo->control_count; i++) {
-		float input = 0.0f;
+    float C_Me = 0.55604;
+    float C_Nr = 0.055604;
+    float S = 0.4266;
+    float b = 2;
+    float c_bar = 0.2;
 
-		_control_cb(_cb_handle,
-			    _pinfo->controls[i].control_group,
-			    _pinfo->controls[i].control_index,
-			    input);
+    float M_factor = C_Me * S * c_bar;
+    float N_factor = C_Nr * S * b;
 
-		sum += scale(_pinfo->controls[i].scaler, input);
-	}
+    float airspeed = 1.0f; //TODO
+    float q_bar = 1.0f; //TODO
+    float M_ = M_factor * q_bar;
+    float N_ = N_factor * q_bar;
 
-	*outputs = scale(_pinfo->output_scaler, sum);
-	return 1;
+    float delta_min = math::radians(-35.0f);
+    float delta_max = math::radians(35.0f);
+
+    // scale with airspeed to avoid bang-bang behaviour at low speeds
+    float scale = math::constrain( (airspeed - 4.0f)/6.0f, 0.0f, 1.0f);
+    
+    float delta_e = math::constrain( M/M_*scale, delta_min, delta_max );
+    float delta_r = math::constrain( N/N_*scale,   delta_min, delta_max );
+
+    //_control_cb(_cb_handle, 0, 3, thrustZ);
+    //thrustZ = math::constrain(-48*thrustZ, -48.0f, 0.0f);
+
+    //_control_cb(_cb_handle, 0, 4, thrustX);
+    //thrustX = math::constrain(48*thrustX, 0.0f, 48.0f);
+
+    //_control_cb(_cb_handle, 0, 5, airspeed);
+    //airspeed = math::constrain(40*airspeed, 0.0f, 40.0f);
+
+    outputs[0] = (2.0f * delta_e - (delta_max + delta_min))/(delta_max - delta_min);
+    outputs[1] = (2.0f * delta_r - (delta_max + delta_min))/(delta_max - delta_min);
+    //printf("output: %f %f\n",(double)outputs[0],(double)outputs[1]);
+
+
+ return 2;
+
+	//float sum = 0.0f;
+
+	//if (_pinfo == nullptr) {
+	//	return 0;
+	//}
+
+	//if (space < 1) {
+	//	return 0;
+	//}
+
+	//for (unsigned i = 0; i < _pinfo->control_count; i++) {
+	//	float input = 0.0f;
+
+	//	_control_cb(_cb_handle,
+	//		    _pinfo->controls[i].control_group,
+	//		    _pinfo->controls[i].control_index,
+	//		    input);
+
+	//	sum += scale(_pinfo->controls[i].scaler, input);
+	//}
+
+	//*outputs = scale(_pinfo->output_scaler, sum);
+	//return 1;
 }
 
 void

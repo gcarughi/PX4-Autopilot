@@ -45,6 +45,8 @@
 
 #include <mathlib/mathlib.h>
 
+#define SIM
+
 #ifdef MIXER_MULTIROTOR_USE_MOCK_GEOMETRY
 enum class MultirotorGeometry : MultirotorGeometryUnderlyingType {
 	QUAD_X,
@@ -332,6 +334,234 @@ void MultirotorMixer::mix_yaw(float yaw, float *outputs)
 	minimize_saturation(_tmp_array, outputs, _saturation_status, 0.f, 1.f, true);
 }
 
+void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust, float *outputs){
+    //TODO: add control surfaces
+
+    float h_0 = 0.015f;
+    float L_0 = 0.29f;
+    float l_1 = 0.1575f;
+    float l_3 = 0.105f;
+    float l_4 = 0.105f;
+    float C_T = 1.11919e-5f;
+    float C_Q = 1.99017e-7f;
+    float C = C_Q / C_T;
+    float T_MAX = 12.0f;
+    float chi_max = math::radians(90.0f);
+    float chi_min = math::radians(-10.0f);
+
+    //aerodynamics
+    float C_La = 0.058649f;
+    float C_Me = 0.55604f;
+    float C_Nr = 0.055604f;
+    float S = 0.4266f;
+    float b = 2.0f;
+    float c_bar = 0.2f;
+
+    float L_factor = C_La * S * b;
+    float M_factor = C_Me * S * c_bar;
+    float N_factor = C_Nr * S * b;
+
+    float airspeed = 1.0f; //TODO
+    float q_bar = 1.0f; //TODO
+    float L_ = L_factor * q_bar;
+    float M_ = M_factor * q_bar;
+    float N_ = N_factor * q_bar;
+
+    float delta_min = math::radians(-35.0f);
+    float delta_max = math::radians(35.0f);
+
+    // scale with airspeed to avoid bang-bang behaviour at low speeds
+    float scale = math::constrain( (airspeed - 4.0f)/6.0f, 0.0f, 1.0f);
+    
+    float delta_a = math::constrain( roll/L_*scale,  delta_min, delta_max );
+    float delta_e = math::constrain( pitch/M_*scale, delta_min, delta_max );
+    float delta_r = math::constrain( yaw/N_*scale,   delta_min, delta_max );
+
+    roll -= L_ * delta_a;
+    pitch -= M_ * delta_e;
+    yaw -= N_ * delta_r;
+
+    thrust = 4.0f * T_MAX * thrust;
+
+    float t1, t2, t3, t4, d_chi_r, d_chi_l, chi_r, chi_l;
+
+    //TODO: fix inputs
+    //float T_cmd; //thrust
+    //thrust = 20.0f;
+    //roll = 0.0f;
+    //pitch = 0.0f;
+    //yaw = 1.0f;
+    float chi_cmd=0.0f; //tilt angle
+    //float L_cmd; //roll
+    //float M_cmd; //pitch
+    //float N_cmd; //yaw
+
+
+    float c_chi = cosf(chi_cmd);
+    float s_chi = sinf(chi_cmd);
+    float c_2chi = cosf(2.0f*chi_cmd);
+    float s_2chi = sinf(2.0f*chi_cmd);
+    float c_chi2 = c_chi * c_chi;
+    float l_34   = l_3 + l_4;
+    float l_1_2  = l_1 * l_1;
+    float l_3_2  = l_3 * l_3;
+    float l_4_2  = l_4 * l_4;
+
+    float temp1  = 2.0f * l_1_2 + l_3 * l_4;
+    float temp2  = 2.0f * temp1 + l_3_2 + l_4_2;
+    
+    float l_arm;
+    float l_arm_2;
+    
+
+    // compute pseudoinverse A_pinv = A^T * inv( A * A^T )
+    float A_pinv[40];
+
+    float sign_1;
+    float sign_2;
+    float sign_3;
+    float denom_1 = ( temp2 + 4.0f * c_chi * l_1 * l_34 );
+    float denom_2 = 4.0f * ( C * C + L_0 * L_0 );
+
+    for( int i = 0; i <= 7; i++ ){
+        sign_1 = (i >= 2 && i <= 5) * 2.0f - 1.0f;
+        sign_2 = (i >= 4) * 2.0f - 1.0f;
+        sign_3 = ( i%4 == 0 || (i-1)%4 == 0 ) * 2.0f - 1.0f;
+        l_arm  =  0.5f * ( 1 + sign_1 ) * l_3 + 0.5f * (1 - sign_1) * l_4;
+        l_arm_2= l_arm * l_arm;
+
+        if(i % 2 == 0){ // even rows
+            // fist column
+            A_pinv[0 + i*5] =
+                (
+                 temp2 * c_chi
+                 - sign_1 * 2.0f * h_0 * l_34 * s_chi
+                 + 4.0f * l_1 * l_34 * c_chi2
+                )/ ( 4.0f * denom_1 );
+
+            // second column
+            A_pinv[1 + i*5] =
+            -(  
+                ( temp1 + l_arm_2 ) * s_chi
+                + l_1 * l_34 * s_2chi
+            )/ ( 2.0f * denom_1 );
+
+            // third column
+            A_pinv[2 + i*5] = (-sign_2 * L_0 * s_chi + sign_3 * C * c_chi) / denom_2;
+
+            // fourth column
+            A_pinv[3 + i*5] = -sign_1 * s_chi * l_34 / (2.0f * denom_1 );
+
+            // fifth column
+            A_pinv[4 + i*5] = (sign_2 * L_0 * c_chi + sign_3 * C * s_chi ) / denom_2;
+
+        
+        } else { // odd rows
+            // first column
+            A_pinv[0 + i*5] = 
+                ( 
+                 temp2 * s_chi
+                 + sign_1 * 2.0f * h_0 * ( c_chi * l_34 + 2.0f * l_1)
+                 + 2.0f * l_1 * l_34 * s_2chi
+                )/( 4.0f * denom_1 );
+
+            // second column
+            A_pinv[1 + i*5] = 
+            ( 
+             2.0f * l_1 * l_arm 
+             + (temp1 + l_arm_2) * c_chi
+             + l_1 * l_34 * c_2chi
+            )/( 2.0f * denom_1 );
+
+            // third column
+            A_pinv[2 + i*5] = (sign_2 * L_0 * c_chi + sign_3 * C * s_chi) / denom_2;
+
+            // fourth column
+            A_pinv[3 + i*5] = sign_1 * (2.0f * l_1 + l_34 * c_chi) / (2.0f * denom_1);
+
+            // fifth column
+            A_pinv[4 + i*5] = (sign_2 * L_0 * s_chi - sign_3 * C * c_chi ) / denom_2;
+        }
+    }
+
+
+    //printf("A_pinv:\n");
+    //for(int i = 0; i<=7; i++){
+    //    printf("%f %f %f %f %f\n", (double)A_pinv[5*i], (double)A_pinv[5*i+1], 
+    //            (double)A_pinv[5*i+2], (double)A_pinv[5*i+3], (double)A_pinv[5*i+4]);
+    //}
+    //printf("\n");
+    
+    float v[8];
+    for( int i=0; i<=7; i++){
+        v[i] =    A_pinv[5*i]     * thrust * s_chi 
+                + A_pinv[5*i + 1] * thrust * c_chi
+                + A_pinv[5*i + 2] * roll
+                + A_pinv[5*i + 3] * pitch
+                + A_pinv[5*i + 4] * yaw;
+    }
+
+    d_chi_r = atan2f( v[0] + v[2] , v[1] + v[3] );
+    d_chi_l = atan2f( v[4] + v[6] , v[5] + v[7] );
+    chi_r   = chi_cmd + d_chi_r;
+    chi_l   = chi_cmd + d_chi_l;
+
+    t1 = v[0] * sinf( d_chi_r ) + v[1] * cosf( d_chi_r );
+    t2 = v[2] * sinf( d_chi_r ) + v[3] * cosf( d_chi_r );
+    t3 = v[4] * sinf( d_chi_l ) + v[5] * cosf( d_chi_l );
+    t4 = v[6] * sinf( d_chi_l ) + v[7] * cosf( d_chi_l );
+
+    //printf("v: %f, %f, %f, %f\n",(double)v[0],(double)v[1],(double)v[2],(double)v[3]);
+    //printf("%f, %f, %f, %f\n",(double)v[4],(double)v[5],(double)v[6],(double)v[7]);
+    //printf("tilt in alloc: %f %f\n",(double)chi_r,(double)chi_l);
+    //printf("thrusts: %f, %f, %f, %f\n",(double)t1, (double)t2, (double)t3, (double)t4);
+    //printf("\n");
+    //t1 = A[0] * thrust + A[1] * roll + A[2] * pitch + A[3] * yaw;
+    //t2 = A[4] * thrust + A[5] * roll + A[6] * pitch + A[7] * yaw;
+    //t3 = A[8] * thrust + A[9] * roll + A[10]* pitch + A[11]* yaw;
+    //t4 = A[12]* thrust + A[13]* roll + A[14]* pitch + A[15]* yaw;
+
+    // scale thrust to PWM
+   
+    #ifndef SIM 
+    outputs[0] = -1.146746f+sqrtf(0.0821782f+0.355259f*t1);
+    outputs[1] = -1.146746f+sqrtf(0.0821782f+0.355259f*t2);
+    outputs[2] = -1.146746f+sqrtf(0.0821782f+0.355259f*t3);
+    outputs[3] = -1.146746f+sqrtf(0.0821782f+0.355259f*t4);
+    outputs[4] = -0.9602f * chi_r + 0.7106f;
+    outputs[5] = 0.9602f  * chi_l - 0.7106f;
+    outputs[6] = -(2.0f * delta_a - (delta_max + delta_min))/(delta_max - delta_min);
+    #endif
+
+    #ifdef SIM
+    outputs[0] = (2.0f * t1) / T_MAX -1.0f;
+    outputs[1] = (2.0f * t2) / T_MAX -1.0f;
+    outputs[2] = (2.0f * t3) / T_MAX -1.0f;
+    outputs[3] = (2.0f * t4) / T_MAX -1.0f;
+    outputs[4] = (2.0f * chi_r - (chi_max + chi_min))/(chi_max - chi_min);
+    outputs[5] = (2.0f * chi_l - (chi_max + chi_min))/(chi_max - chi_min);
+    outputs[6] = -(2.0f * delta_a - (delta_max + delta_min))/(delta_max - delta_min);
+    //outputs[0] = t1 / T_MAX;
+    //outputs[1] = t2 / T_MAX;
+    //outputs[2] = t3 / T_MAX;
+    //outputs[3] = t4 / T_MAX;
+    #endif
+
+    //printf("in mixer\n");
+    //printf("thrust: %f\n",(double)thrust);
+    //printf("roll: %f\n",(double)roll);
+    //printf("pitch: %f\n",(double)pitch);
+    //printf("yaw: %f\n",(double)yaw);
+    //printf("t1: %f\n",(double)t1);
+    //printf("t2: %f\n",(double)t2);
+    //printf("t3: %f\n",(double)t3);
+    //printf("t4: %f\n",(double)t4);
+    //printf("outputs: %f %f %f %f\n\n",(double)outputs[0],(double)outputs[1],(double)outputs[2],(double)outputs[3]);
+//    printf("\n");
+
+
+}
+
 unsigned
 MultirotorMixer::mix(float *outputs, unsigned space)
 {
@@ -347,78 +577,81 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 	// clean out class variable used to capture saturation
 	_saturation_status.value = 0;
 
+    mix_vtol(roll, pitch, yaw, thrust, outputs);
+    return 7;
+
 	// Do the mixing using the strategy given by the current Airmode configuration
-	switch (_airmode) {
-	case Airmode::roll_pitch:
-		mix_airmode_rp(roll, pitch, yaw, thrust, outputs);
-		break;
+	//switch (_airmode) {
+	//case Airmode::roll_pitch:
+	//	mix_airmode_rp(roll, pitch, yaw, thrust, outputs);
+	//	break;
 
-	case Airmode::roll_pitch_yaw:
-		mix_airmode_rpy(roll, pitch, yaw, thrust, outputs);
-		break;
+	//case Airmode::roll_pitch_yaw:
+	//	mix_airmode_rpy(roll, pitch, yaw, thrust, outputs);
+	//	break;
 
-	case Airmode::disabled:
-	default: // just in case: default to disabled
-		mix_airmode_disabled(roll, pitch, yaw, thrust, outputs);
-		break;
-	}
+	//case Airmode::disabled:
+	//default: // just in case: default to disabled
+	//	mix_airmode_disabled(roll, pitch, yaw, thrust, outputs);
+	//	break;
+	//}
 
-	// Apply thrust model and scale outputs to range [idle_speed, 1].
-	// At this point the outputs are expected to be in [0, 1], but they can be outside, for example
-	// if a roll command exceeds the motor band limit.
-	for (unsigned i = 0; i < _rotor_count; i++) {
-		// Implement simple model for static relationship between applied motor pwm and motor thrust
-		// model: thrust = (1 - _thrust_factor) * PWM + _thrust_factor * PWM^2
-		if (_thrust_factor > 0.0f) {
-			outputs[i] = -(1.0f - _thrust_factor) / (2.0f * _thrust_factor) + sqrtf((1.0f - _thrust_factor) *
-					(1.0f - _thrust_factor) / (4.0f * _thrust_factor * _thrust_factor) + (outputs[i] < 0.0f ? 0.0f : outputs[i] /
-							_thrust_factor));
-		}
+	//Apply thrust model and scale outputs to range [idle_speed, 1].
+	//At this point the outputs are expected to be in [0, 1], but they can be outside, for example
+	//if a roll command exceeds the motor band limit.
+	//for (unsigned i = 0; i < _rotor_count; i++) {
+	//	// Implement simple model for static relationship between applied motor pwm and motor thrust
+	//	// model: thrust = (1 - _thrust_factor) * PWM + _thrust_factor * PWM^2
+	//	if (_thrust_factor > 0.0f) {
+	//		outputs[i] = -(1.0f - _thrust_factor) / (2.0f * _thrust_factor) + sqrtf((1.0f - _thrust_factor) *
+	//				(1.0f - _thrust_factor) / (4.0f * _thrust_factor * _thrust_factor) + (outputs[i] < 0.0f ? 0.0f : outputs[i] /
+	//						_thrust_factor));
+	//	}
 
-		outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
-	}
+	//	outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
+	//}
 
-	// Slew rate limiting and saturation checking
-	for (unsigned i = 0; i < _rotor_count; i++) {
-		bool clipping_high = false;
-		bool clipping_low_roll_pitch = false;
-		bool clipping_low_yaw = false;
+	//// Slew rate limiting and saturation checking
+	//for (unsigned i = 0; i < _rotor_count; i++) {
+	//	bool clipping_high = false;
+	//	bool clipping_low_roll_pitch = false;
+	//	bool clipping_low_yaw = false;
 
-		// Check for saturation against static limits.
-		// We only check for low clipping if airmode is disabled (or yaw
-		// clipping if airmode==roll/pitch), since in all other cases thrust will
-		// be reduced or boosted and we can keep the integrators enabled, which
-		// leads to better tracking performance.
-		if (outputs[i] < _idle_speed + 0.01f) {
-			if (_airmode == Airmode::disabled) {
-				clipping_low_roll_pitch = true;
-				clipping_low_yaw = true;
+	//	// Check for saturation against static limits.
+	//	// We only check for low clipping if airmode is disabled (or yaw
+	//	// clipping if airmode==roll/pitch), since in all other cases thrust will
+	//	// be reduced or boosted and we can keep the integrators enabled, which
+	//	// leads to better tracking performance.
+	//	if (outputs[i] < _idle_speed + 0.01f) {
+	//		if (_airmode == Airmode::disabled) {
+	//			clipping_low_roll_pitch = true;
+	//			clipping_low_yaw = true;
 
-			} else if (_airmode == Airmode::roll_pitch) {
-				clipping_low_yaw = true;
-			}
-		}
+	//		} else if (_airmode == Airmode::roll_pitch) {
+	//			clipping_low_yaw = true;
+	//		}
+	//	}
 
-		// check for saturation against slew rate limits
-		if (_delta_out_max > 0.0f) {
-			float delta_out = outputs[i] - _outputs_prev[i];
+	//	// check for saturation against slew rate limits
+	//	if (_delta_out_max > 0.0f) {
+	//		float delta_out = outputs[i] - _outputs_prev[i];
 
-			if (delta_out > _delta_out_max) {
-				outputs[i] = _outputs_prev[i] + _delta_out_max;
-				clipping_high = true;
+	//		if (delta_out > _delta_out_max) {
+	//			outputs[i] = _outputs_prev[i] + _delta_out_max;
+	//			clipping_high = true;
 
-			} else if (delta_out < -_delta_out_max) {
-				outputs[i] = _outputs_prev[i] - _delta_out_max;
-				clipping_low_roll_pitch = true;
-				clipping_low_yaw = true;
-			}
-		}
+	//		} else if (delta_out < -_delta_out_max) {
+	//			outputs[i] = _outputs_prev[i] - _delta_out_max;
+	//			clipping_low_roll_pitch = true;
+	//			clipping_low_yaw = true;
+	//		}
+	//	}
 
-		_outputs_prev[i] = outputs[i];
+	//	_outputs_prev[i] = outputs[i];
 
-		// update the saturation status report
-		update_saturation_status(i, clipping_high, clipping_low_roll_pitch, clipping_low_yaw);
-	}
+	//	// update the saturation status report
+	//	update_saturation_status(i, clipping_high, clipping_low_roll_pitch, clipping_low_yaw);
+	//}
 
 	// this will force the caller of the mixer to always supply new slew rate values, otherwise no slew rate limiting will happen
 	_delta_out_max = 0.0f;

@@ -3330,7 +3330,6 @@ protected:
 	{
 		vehicle_control_mode_s control_mode = {};
 		_control_mode_sub->update(&control_mode);
-
 		if (control_mode.flag_control_position_enabled) {
 
 			position_setpoint_triplet_s pos_sp_triplet = {};
@@ -3426,7 +3425,6 @@ protected:
 	bool send(const hrt_abstime t) override
 	{
 		vehicle_local_position_setpoint_s pos_sp;
-
 		if (_pos_sp_sub->update(&_pos_sp_time, &pos_sp)) {
 			mavlink_position_target_local_ned_t msg = {};
 

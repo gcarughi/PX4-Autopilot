@@ -226,7 +226,15 @@ void Sih::init_variables()
 	_q = Quatf(1.0f, 0.0f, 0.0f, 0.0f);
 	_w_B = Vector3f(0.0f, 0.0f, 0.0f);
 
-	_u[0] = _u[1] = _u[2] = _u[3] = 0.0f;
+    for( int i = 0; i<NB_MOTORS; i++ ){
+        _u[i] = 0.0f;
+    }
+
+    _Ft_B.setZero();
+    _Mt_B.setZero();
+    _Fa_B.setZero();
+    _Ma_B.setZero();
+
     
     /*
      * vehicle data
@@ -351,12 +359,18 @@ void Sih::generate_force_and_torques_vtol()
      */
 
     //printf("u: %f %f %f %f\n", (double)_u[6], (double)_u[7],(double)_u[8],(double)_u[9]);
+    Vector<float,4> T;
+    T(0) = _T_MAX * _u[0];
+    T(1) = _T_MAX * _u[1];
+    T(2) = _T_MAX * _u[2];
+    T(3) = _T_MAX * _u[3];
     float chi_r     = _u[4] * (chi_max - chi_min) + chi_min;
     float chi_l     = _u[5] * (chi_max - chi_min) + chi_min;
     float delta_a   = _u[6] * (delta_min - delta_max) + delta_max;
     float delta_e   = _u[7] * (delta_max - delta_min) + delta_min;
     float delta_r   = _u[8] * (delta_max - delta_min) + delta_min;
     //printf("u chi in sih: %f %f\n", (double)_u[4],(double)_u[5]);
+    //printf("t in sih: %f %f %f %f\n", (double)T(0),(double)T(1),(double)T(2),(double)T(3));
     //printf("chi in sih: %f %f\n", (double)chi_r,(double)chi_l);
     Dcmf R_chir(AxisAngle<float>(Vector3f(0,1,0), -chi_r));
     Dcmf R_chil(AxisAngle<float>(Vector3f(0,1,0), -chi_l));
@@ -384,8 +398,8 @@ void Sih::generate_force_and_torques_vtol()
         }
 
         d_ri    = Vector3f( d_i.col(i) ) + R_chi * Vector3f( d_ei.col(i) );
-        _T      = - _T_MAX * _u[i] * Vector3f( R_chi.col(2) );
-        _Q      = _Q_MAX * _T_MAX * _u[i] * Vector3f( R_chi.col(2) );
+        _T      = - T(i) * Vector3f( R_chi.col(2) );
+        _Q      = _Q_MAX * T(i) * Vector3f( R_chi.col(2) );
 
         _Ft_B += _T;
         _Mt_B += (float)std::pow(-1,i+1)*_Q + d_ri.cross( _T );
@@ -473,8 +487,6 @@ void Sih::generate_force_and_torques_vtol()
     _Fa_B += F_a;
     _Ma_B += M_a;
 
-    //printf("_Fa_B: %f,%f,%f\n",(double)_Fa_B(0),(double)_Fa_B(1),(double)_Fa_B(2));
-    //printf("_Ma_B: %f,%f,%f\n",(double)_Ma_B(0),(double)_Ma_B(1),(double)_Ma_B(2));
 
     /*
      * control surfaces
@@ -486,6 +498,9 @@ void Sih::generate_force_and_torques_vtol()
     float N_delta   = C_Nr * S_S * b     * q_bar * delta_r;
 
     _Ma_B += Vector3f( L_delta, M_delta, N_delta );
+
+    //printf("_Fa_B: %f,%f,%f\n",(double)_Fa_B(0),(double)_Fa_B(1),(double)_Fa_B(2));
+    //printf("_Ma_B: %f,%f,%f\n",(double)_Ma_B(0),(double)_Ma_B(1),(double)_Ma_B(2));
     
 
 }
@@ -528,6 +543,8 @@ void Sih::equations_of_motion()
 	_v_I_dot = (_G_I + _C_IB * (_Fa_B + _Ft_B)) / _MASS;   // conservation of linear momentum
 	_q_dot = _q.derivative1(_w_B);              // attitude differential
 	_w_B_dot = _I_inv * (_Mt_B + _Ma_B - _w_B.cross(_I * _w_B)); // conservation of angular momentum
+    //printf("_v_I_dot: %f %f %f\n",(double)_v_I_dot(0),(double)_v_I_dot(1),(double)_v_I_dot(2));
+
 
 	// fake ground, avoid free fall
 	if (_p_I(2) > 0.0f && (_v_I_dot(2) > 0.0f || _v_I(2) > 0.0f)) {
@@ -541,6 +558,9 @@ void Sih::equations_of_motion()
 
 		_v_I.setZero();
 		_w_B.setZero();
+
+		//_w_B = _w_B + _w_B_dot * _dt;
+
 		_grounded = true;
 
 	} else {
@@ -552,6 +572,12 @@ void Sih::equations_of_motion()
 		_w_B = _w_B + _w_B_dot * _dt;
 		_grounded = false;
 	}
+
+    //printf("_p_I: %f %f %f\n",(double)_p_I(0),(double)_p_I(1),(double)_p_I(2));
+    //printf("_v_I: %f %f %f\n",(double)_v_I(0),(double)_v_I(1),(double)_v_I(2));
+    //printf("_q: %f %f %f %f\n",(double)_q(0),(double)_q(1),(double)_q(2),(double)_q(3));
+    //printf("_w_B: %f %f %f\n",(double)_w_B(0),(double)_w_B(1),(double)_w_B(2));
+    //printf("\n");
 }
 
 // reconstruct the noisy sensor signals

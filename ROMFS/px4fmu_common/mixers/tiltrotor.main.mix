@@ -1,0 +1,7 @@
+Mixer for quad tiltrotor (x motor configuration)
+================================================
+
+This file defines a single mixer for a tiltrotor (SITL gazebo) with motors in X configuration. The plane has two ailerons and one elevator.
+
+R: 8x 10000 10000 10000 0
+

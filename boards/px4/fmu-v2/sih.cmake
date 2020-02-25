@@ -3,7 +3,7 @@ px4_add_board(
 	PLATFORM nuttx
 	VENDOR px4
 	MODEL fmu-v2
-	LABEL default
+	LABEL sih
 	TOOLCHAIN arm-none-eabi
 	ARCHITECTURE cortex-m4
 	ROMFSROOT px4fmu_common
@@ -86,7 +86,7 @@ px4_add_board(
 		rc_update
 		#rover_pos_control
 		sensors
-		sih
+        sih
 		#temperature_compensation
 		vmount
 		vtol_att_control
@@ -113,7 +113,7 @@ px4_add_board(
 		#shutdown
 		#tests # tests and test runner
 		top
-		#topic_listener
+        #topic_listener
 		tune_control
 		#usb_connected
 		ver

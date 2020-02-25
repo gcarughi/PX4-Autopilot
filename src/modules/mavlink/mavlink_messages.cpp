@@ -3418,7 +3418,8 @@ private:
 
 protected:
 	explicit MavlinkStreamLocalPositionSetpoint(Mavlink *mavlink) : MavlinkStream(mavlink),
-		_pos_sp_sub(_mavlink->add_orb_subscription(ORB_ID(vehicle_local_position_setpoint))),
+		//_pos_sp_sub(_mavlink->add_orb_subscription(ORB_ID(vehicle_local_position_setpoint))),
+		_pos_sp_sub(_mavlink->add_orb_subscription(ORB_ID(trajectory_setpoint))),
 		_pos_sp_time(0)
 	{}
 

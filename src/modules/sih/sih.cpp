@@ -190,21 +190,23 @@ void Sih::parameters_update_poll()
 // store the parameters in a more convenient form
 void Sih::parameters_updated()
 {
-	_T_MAX = _sih_t_max.get();
-	_Q_MAX = _sih_q_max.get();
-	_L_ROLL = _sih_l_roll.get();
-	_L_PITCH = _sih_l_pitch.get();
-	_KDV = _sih_kdv.get();
-	_KDW = _sih_kdw.get();
-	_H0 = _sih_h0.get();
+    _CHECK_ROBUST = (bool)_sih_robust.get();
 
-	_LAT0 = (double)_sih_lat0.get() * 1.0e-7;
-	_LON0 = (double)_sih_lon0.get() * 1.0e-7;
-	_COS_LAT0 = cosl(radians(_LAT0));
+	_T_MAX      = _sih_t_max.get();
+	_Q_MAX      = _sih_q_max.get();
+	_L_ROLL     = _sih_l_roll.get();
+	_L_PITCH    = _sih_l_pitch.get();
+	_KDV        = _sih_kdv.get();
+	_KDW        = _sih_kdw.get();
+	_H0         = _sih_h0.get();
 
-	_MASS = _sih_mass.get();
+	_LAT0       = (double)_sih_lat0.get() * 1.0e-7;
+	_LON0       = (double)_sih_lon0.get() * 1.0e-7;
+	_COS_LAT0   = cosl(radians(_LAT0));
 
-	_G_I = Vector3f(0.0f, 0.0f, _MASS * CONSTANTS_ONE_G);
+	_MASS       = _sih_mass.get();
+
+	_G_I        = Vector3f(0.0f, 0.0f, _MASS * CONSTANTS_ONE_G);
 
 	_I = diag(Vector3f(_sih_ixx.get(), _sih_iyy.get(), _sih_izz.get()));
 	_I(0, 1) = _I(1, 0) = _sih_ixy.get();
@@ -464,9 +466,9 @@ void Sih::generate_force_and_torques_vtol()
             * ( v_a * c_d + Vector3f( -v_a(1), v_a(0), 0.0f ) * c_l );
     M_a = Vector3f( aero_pos.col(4) ).cross( F_a );
 
+
     _Fa_B += F_a;
     _Ma_B += M_a;
-
 
     /*
      * control surfaces
@@ -477,6 +479,26 @@ void Sih::generate_force_and_torques_vtol()
     float N_delta   = C_Nr * S_S * b     * q_bar * delta_r;
 
     _Ma_B += Vector3f( L_delta, M_delta, N_delta );
+
+    //printf("M_delta: %f\n",(double)M_delta);
+
+    /*
+     * modify values to test robustness
+     */
+    if( _CHECK_ROBUST ){
+      for(int i=0; i<3; i++){
+        float k_rand = (float)rand()/RAND_MAX + 0.5f;
+        _Ft_B(i) = k_rand * _Ft_B(i);
+        _Mt_B(i) = k_rand * _Mt_B(i);
+        _Fa_B(i) = k_rand * _Fa_B(i);
+        _Ma_B(i) = k_rand * _Ma_B(i);
+      }
+    }
+//    printf("_Ft_B: %f %f %f\n",(double)_Ft_B(0),(double)_Ft_B(1),(double)_Ft_B(2));
+//    printf("_Fa_B: %f %f %f\n",(double)_Fa_B(0),(double)_Fa_B(1),(double)_Fa_B(2));
+//    printf("_Mt_B: %f %f %f\n",(double)_Mt_B(0),(double)_Mt_B(1),(double)_Mt_B(2));
+//    printf("_Ma_B: %f %f %f\n",(double)_Ma_B(0),(double)_Ma_B(1),(double)_Ma_B(2));
+//    printf("\n");
 
 }
 

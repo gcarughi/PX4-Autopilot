@@ -40,6 +40,20 @@
  */
 
 /**
+ * Robustness check
+ *
+ * varies simulation parameters if enabled to test robustness
+ *
+ * @unit bool
+ * @min 0
+ * @max 0
+ * @decimal 0
+ * @increment 1
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_INT32(SIH_ROBUST, 0);
+
+/**
  * Vehicle mass
  *
  * This value can be measured by weighting the quad on a scale.

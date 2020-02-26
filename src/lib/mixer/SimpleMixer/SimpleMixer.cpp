@@ -240,7 +240,8 @@ out:
 unsigned
 SimpleMixer::mix(float *outputs, unsigned space)
 {
-    float M,N;
+    float M,N, airspeed;
+    float AIRSPEED_MAX = 40.0f;
 
     // note: rest is assigned in multirotor mixer
     // TODO: check normalization
@@ -250,22 +251,28 @@ SimpleMixer::mix(float *outputs, unsigned space)
     _control_cb(_cb_handle, 0, 2, N);
     N = math::constrain(N, -6.0f, 6.0f);
 
+    _control_cb(_cb_handle, 0, 5, airspeed);
+
+	airspeed  = math::constrain( airspeed, 1e-8f, 1.0f);
+    airspeed = AIRSPEED_MAX * airspeed;
+
     float C_Me = 0.55604;
     float C_Nr = 0.055604;
     float S = 0.4266;
     float b = 2;
     float c_bar = 0.2;
+    float delta_min = math::radians(-35.0f);
+    float delta_max = math::radians(35.0f);
 
     float M_factor = C_Me * S * c_bar;
     float N_factor = C_Nr * S * b;
 
-    float airspeed = 1.0f; //TODO
-    float q_bar = 1.0f; //TODO
+
+
+    float q_bar = 0.5f * 1.2f * airspeed * airspeed;
     float M_ = M_factor * q_bar;
     float N_ = N_factor * q_bar;
 
-    float delta_min = math::radians(-35.0f);
-    float delta_max = math::radians(35.0f);
 
     // scale with airspeed to avoid bang-bang behaviour at low speeds
     float scale = math::constrain( (airspeed - 4.0f)/6.0f, 0.0f, 1.0f);

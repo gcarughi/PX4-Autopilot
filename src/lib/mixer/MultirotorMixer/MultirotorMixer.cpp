@@ -335,7 +335,6 @@ void MultirotorMixer::mix_yaw(float yaw, float *outputs)
 }
 
 void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust, float *outputs){
-    //TODO: add control surfaces
 
     float h_0 = 0.015f;
     float L_0 = 0.29f;
@@ -361,41 +360,54 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     float M_factor = C_Me * S * c_bar;
     float N_factor = C_Nr * S * b;
 
-    float airspeed = 1.0f; //TODO
-    float q_bar = 1.0f; //TODO
+
+    float delta_min = math::radians(-35.0f);
+    float delta_max = math::radians(35.0f);
+    
+    // load inputs
+	float L         = math::constrain(get_control(0, 0), -1.0f, 1.0f);
+	float M         = math::constrain(get_control(0, 1), -1.0f, 1.0f);
+	float N         = math::constrain(get_control(0, 2), -1.0f, 1.0f);
+	float T         = math::constrain(get_control(0, 3), 0.0f, 1.0f);
+    T = T * 4.0f * T_MAX;
+    float M_MAX = 2.0f;
+    float AIRSPEED_MAX = 40.0f;
+    L = L * M_MAX;
+    M = M * M_MAX;
+    N = N * M_MAX;
+
+	float chi_cmd   = math::constrain(get_control(0, 4), -1.0f, 1.0f);
+    chi_cmd = ( chi_max - chi_min ) * chi_cmd + chi_min;
+
+	float airspeed  = math::constrain(get_control(0, 5), 1e-8f, 1.0f);
+    airspeed = AIRSPEED_MAX * airspeed;
+
+
+    float q_bar = 0.5f * 1.2f * airspeed * airspeed;
     float L_ = L_factor * q_bar;
     float M_ = M_factor * q_bar;
     float N_ = N_factor * q_bar;
 
-    float delta_min = math::radians(-35.0f);
-    float delta_max = math::radians(35.0f);
 
     // scale with airspeed to avoid bang-bang behaviour at low speeds
     float scale = math::constrain( (airspeed - 4.0f)/6.0f, 0.0f, 1.0f);
     
-    float delta_a = math::constrain( roll/L_*scale,  delta_min, delta_max );
-    float delta_e = math::constrain( pitch/M_*scale, delta_min, delta_max );
-    float delta_r = math::constrain( yaw/N_*scale,   delta_min, delta_max );
+    float delta_a = math::constrain( L/L_*scale,  delta_min, delta_max );
+    float delta_e = math::constrain( M/M_*scale, delta_min, delta_max );
+    float delta_r = math::constrain( N/N_*scale,   delta_min, delta_max );
 
-    roll -= L_ * delta_a;
-    pitch -= M_ * delta_e;
-    yaw -= N_ * delta_r;
+    //printf("chi_c: %f\n",(double)chi_cmd);
+    //printf("delta_a: %f\n",(double)delta_a);
+    //printf("delta_e: %f\n",(double)delta_e);
+    //printf("delta_r: %f\n",(double)delta_r);
 
-    thrust = 4.0f * T_MAX * thrust;
+    L -= L_ * delta_a;
+    M -= M_ * delta_e;
+    N -= N_ * delta_r;
+
+    //thrust = 4.0f * T_MAX * thrust;
 
     float t1, t2, t3, t4, d_chi_r, d_chi_l, chi_r, chi_l;
-
-    //TODO: fix inputs
-    //float T_cmd; //thrust
-    //thrust = 20.0f;
-    //roll = 0.0f;
-    //pitch = 0.0f;
-    //yaw = 1.0f;
-    float chi_cmd=0.0f; //tilt angle
-    //float L_cmd; //roll
-    //float M_cmd; //pitch
-    //float N_cmd; //yaw
-
 
     float c_chi = cosf(chi_cmd);
     float s_chi = sinf(chi_cmd);
@@ -491,20 +503,31 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     //            (double)A_pinv[5*i+2], (double)A_pinv[5*i+3], (double)A_pinv[5*i+4]);
     //}
     //printf("\n");
+    //
+    //printf("alloc T: %f\n",(double)T);
+    //printf("alloc chi: %f\n",(double)chi_cmd);
+    //printf("alloc L: %f\n",(double)L);
+    //printf("alloc M: %f\n",(double)M);
+    //printf("alloc N: %f\n",(double)N);
+    
     
     float v[8];
     for( int i=0; i<=7; i++){
-        v[i] =    A_pinv[5*i]     * thrust * s_chi 
-                + A_pinv[5*i + 1] * thrust * c_chi
-                + A_pinv[5*i + 2] * roll
-                + A_pinv[5*i + 3] * pitch
-                + A_pinv[5*i + 4] * yaw;
+        v[i] =    A_pinv[5*i]     * T * s_chi 
+                + A_pinv[5*i + 1] * T * c_chi
+                + A_pinv[5*i + 2] * L
+                + A_pinv[5*i + 3] * M
+                + A_pinv[5*i + 4] * N;
     }
 
     d_chi_r = atan2f( v[0] + v[2] , v[1] + v[3] );
     d_chi_l = atan2f( v[4] + v[6] , v[5] + v[7] );
     chi_r   = chi_cmd + d_chi_r;
     chi_l   = chi_cmd + d_chi_l;
+
+
+    //printf("d_chi_r alloc: %f\n",(double)d_chi_r);
+    //printf("d_chi_l alloc: %f\n",(double)d_chi_l);
 
     t1 = v[0] * sinf( d_chi_r ) + v[1] * cosf( d_chi_r );
     t2 = v[2] * sinf( d_chi_r ) + v[3] * cosf( d_chi_r );
@@ -516,13 +539,8 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     //printf("tilt in alloc: %f %f\n",(double)chi_r,(double)chi_l);
     //printf("thrusts: %f, %f, %f, %f\n",(double)t1, (double)t2, (double)t3, (double)t4);
     //printf("\n");
-    //t1 = A[0] * thrust + A[1] * roll + A[2] * pitch + A[3] * yaw;
-    //t2 = A[4] * thrust + A[5] * roll + A[6] * pitch + A[7] * yaw;
-    //t3 = A[8] * thrust + A[9] * roll + A[10]* pitch + A[11]* yaw;
-    //t4 = A[12]* thrust + A[13]* roll + A[14]* pitch + A[15]* yaw;
 
     // scale thrust to PWM
-   
     #ifndef SIM 
     outputs[0] = -1.146746f+sqrtf(0.0821782f+0.355259f*t1);
     outputs[1] = -1.146746f+sqrtf(0.0821782f+0.355259f*t2);
@@ -548,16 +566,22 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     #endif
 
     //printf("in mixer\n");
-    //printf("thrust: %f\n",(double)thrust);
-    //printf("roll: %f\n",(double)roll);
-    //printf("pitch: %f\n",(double)pitch);
-    //printf("yaw: %f\n",(double)yaw);
+    //printf("thrust: %f\n",(double)T);
+    //printf("roll: %f\n",(double)L);
+    //printf("pitch: %f\n",(double)M);
+    //printf("yaw: %f\n",(double)N);
     //printf("t1: %f\n",(double)t1);
     //printf("t2: %f\n",(double)t2);
     //printf("t3: %f\n",(double)t3);
     //printf("t4: %f\n",(double)t4);
-    //printf("outputs: %f %f %f %f\n\n",(double)outputs[0],(double)outputs[1],(double)outputs[2],(double)outputs[3]);
-//    printf("\n");
+    //printf("dchi_r: %f\n",(double)d_chi_r);
+    //printf("dchi_l: %f\n",(double)d_chi_l);
+    //printf("outputs t: %f %f %f %f\n\n",(double)outputs[0],(double)outputs[1],(double)outputs[2],(double)outputs[3]);
+    //printf("delta_a: %f\n",(double)delta_a);
+    //printf("delta_e: %f\n",(double)delta_e);
+    //printf("delta_r: %f\n",(double)delta_r);
+    //printf("outputs delta: %f\n",(double)outputs[6]);
+    //printf("\n");
 
 
 }

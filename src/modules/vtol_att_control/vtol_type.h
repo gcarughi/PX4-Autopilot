@@ -48,6 +48,7 @@
 #include <drivers/drv_pwm_output.h>
 
 struct Params {
+	int32_t use_ext_ctrl;			// pwm value for idle in mc mode
 	int32_t idle_pwm_mc;			// pwm value for idle in mc mode
 	int32_t vtol_motor_id;
 	int32_t vtol_type;
@@ -136,6 +137,7 @@ public:
 	 * Update multicopter state.
 	 */
 	virtual void update_mc_state();
+	virtual void update_mc_state_custom();
 
 	/**
 	 * Update fixed wing state.
@@ -190,6 +192,8 @@ protected:
 	struct airspeed_validated_s 				*_airspeed_validated;					// airspeed
 	struct tecs_status_s				*_tecs_status;
 	struct vehicle_land_detected_s			*_land_detected;
+
+	struct mpc_command_s 				*_mpc_cmd;					// airspeed
 
 	struct Params 					*_params;
 
@@ -248,6 +252,10 @@ protected:
 	motor_state set_motor_state(const motor_state current_state, const motor_state next_state, const int value = 0);
 
 private:
+
+    float coeff_mc_prev = 1.0f;
+    float coeff_fw_prev = 0.0f;
+    float tchi_prev = 0.0f;
 
 
 	/**

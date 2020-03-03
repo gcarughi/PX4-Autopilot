@@ -205,7 +205,8 @@ void Tiltrotor::update_vtol_state()
 
 void Tiltrotor::update_mc_state()
 {
-	VtolType::update_mc_state();
+	//VtolType::update_mc_state();
+	VtolType::update_mc_state_custom();
 
 	// make sure motors are not tilted
 	_tilt_control = _params_tiltrotor.tilt_mc;
@@ -214,6 +215,7 @@ void Tiltrotor::update_mc_state()
 void Tiltrotor::update_fw_state()
 {
 	VtolType::update_fw_state();
+    PX4_WARN("FW controller running (BAD)!!");
 
 	// make sure motors are tilted forward
 	_tilt_control = _params_tiltrotor.tilt_fw;
@@ -341,10 +343,87 @@ void Tiltrotor::waiting_on_tecs()
 */
 void Tiltrotor::fill_actuator_outputs()
 {
+    //printf("flag_control_position): %i\n",(int)_v_control_mode->flag_control_position_enabled);
+    //printf("flag_control_offboard): %i\n",(int)_v_control_mode->flag_control_offboard_enabled);
+    //printf("MPC command: %f\n",(double)_mpc_cmd->thrust);
+    //printf("MPC command: %f\n",(double)_mpc_cmd->tilt_angle);
+    //printf("MPC command: %f\n",(double)_mpc_cmd->torque_x);
+    //printf("MPC command: %f\n",(double)_mpc_cmd->torque_y);
+    //printf("MPC command: %f\n\n",(double)_mpc_cmd->torque_z);
 	// Multirotor output
-	_actuators_out_0->timestamp = hrt_absolute_time();
-	_actuators_out_0->timestamp_sample = _actuators_mc_in->timestamp_sample;
+    
+    if ( _params -> use_ext_ctrl )
+    {
+        // use external mpc controller
+	    _actuators_out_0->timestamp = hrt_absolute_time();
+	    _actuators_out_0->timestamp_sample = _mpc_cmd->timestamp;
 
+        float M_MAX = 2.0f;
+        float T_MAX = 12.0f;
+        //float chi_max = math::radians(90.0f);
+        //float chi_min = math::radians(-10.0f);
+
+        // note: these values need to be normalized to [-1,1]
+        // roll torque
+        _actuators_out_0->control[actuator_controls_s::INDEX_ROLL] = 
+            _mpc_cmd->torque_x / M_MAX;
+        // pitch torque
+        _actuators_out_0->control[actuator_controls_s::INDEX_PITCH] = 
+            _mpc_cmd->torque_y / M_MAX;
+        // yaw torque
+        _actuators_out_0->control[actuator_controls_s::INDEX_YAW] = 
+            _mpc_cmd->torque_z / M_MAX;
+        // thrust z
+        _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE] = 
+            (_mpc_cmd->thrust * cosf(_mpc_cmd->tilt_angle) )/ (4.0f * T_MAX);
+        // thrust x
+        _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE+1] = 
+            (_mpc_cmd->thrust * sinf(_mpc_cmd->tilt_angle) )/ (4.0f * T_MAX);
+
+    } else {
+        // use fused pid controller
+	    _actuators_out_0->timestamp = hrt_absolute_time();
+	    _actuators_out_0->timestamp_sample = _actuators_mc_in->timestamp_sample;
+
+        //float chi_max = math::radians(90.0f);
+        //float chi_min = math::radians(-10.0f);
+
+        // roll torque
+        _actuators_out_0->control[actuator_controls_s::INDEX_ROLL] = 
+            _actuators_mc_in->control[actuator_controls_s::INDEX_ROLL];
+        // pitch torque
+        _actuators_out_0->control[actuator_controls_s::INDEX_PITCH] = 
+            _actuators_mc_in->control[actuator_controls_s::INDEX_PITCH];
+        // yaw torque
+        _actuators_out_0->control[actuator_controls_s::INDEX_YAW] = 
+            _actuators_mc_in->control[actuator_controls_s::INDEX_YAW];
+        // -z thrust (up)
+        _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE] =
+            _actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE];
+        // x thrust (forward)
+        _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE+1] =
+            _actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE+1];
+
+//        printf("roll: %f\n",
+//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_ROLL]);
+//        printf("pitch: %f\n",
+//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_PITCH]);
+//        printf("yaw: %f\n",
+//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_YAW]);
+//        printf("thrust up: %f\n",
+//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE]);
+//        printf("thrust forward: %f\n",
+//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE+1]);
+//
+    }
+
+    // airspeed
+    _actuators_out_0->control[actuator_controls_s::INDEX_SPOILERS] = 
+    ( _local_pos->vx * cosf(_local_pos->yaw) + _local_pos->vy * sinf(_local_pos->yaw) )/40.0f;
+
+
+
+/*
 	_actuators_out_0->control[actuator_controls_s::INDEX_ROLL] =
 		_actuators_mc_in->control[actuator_controls_s::INDEX_ROLL] * _mc_roll_weight;
 	_actuators_out_0->control[actuator_controls_s::INDEX_PITCH] =
@@ -356,7 +435,7 @@ void Tiltrotor::fill_actuator_outputs()
 		_actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE] =
 			_actuators_fw_in->control[actuator_controls_s::INDEX_THROTTLE];
 
-		/* allow differential thrust if enabled */
+		// allow differential thrust if enabled //
 		if (_params->diff_thrust == 1) {
 			_actuators_out_0->control[actuator_controls_s::INDEX_ROLL] =
 				_actuators_fw_in->control[actuator_controls_s::INDEX_YAW] * _params->diff_thrust_scale;
@@ -386,4 +465,5 @@ void Tiltrotor::fill_actuator_outputs()
 		_actuators_out_1->control[actuator_controls_s::INDEX_YAW] =
 			_actuators_fw_in->control[actuator_controls_s::INDEX_YAW];
 	}
+    */
 }

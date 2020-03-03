@@ -61,6 +61,7 @@ VtolAttitudeControl::VtolAttitudeControl() :
 	_params.idle_pwm_mc = PWM_DEFAULT_MIN;
 	_params.vtol_motor_id = 0;
 
+	_params_handles.use_ext_ctrl = param_find("VT_USE_EXT_CTRL");
 	_params_handles.idle_pwm_mc = param_find("VT_IDLE_PWM_MC");
 	_params_handles.vtol_motor_id = param_find("VT_MOT_ID");
 	_params_handles.vtol_fw_permanent_stab = param_find("VT_FW_PERM_STAB");
@@ -211,6 +212,9 @@ VtolAttitudeControl::parameters_update()
 {
 	float v;
 	int32_t l;
+	/* use external controller */
+	param_get(_params_handles.use_ext_ctrl, &_params.use_ext_ctrl);
+
 	/* idle pwm for mc mode */
 	param_get(_params_handles.idle_pwm_mc, &_params.idle_pwm_mc);
 
@@ -309,6 +313,9 @@ VtolAttitudeControl::Run()
 
 	const bool updated_fw_in = _actuator_inputs_fw.update(&_actuators_fw_in);
 	const bool updated_mc_in = _actuator_inputs_mc.update(&_actuators_mc_in);
+
+    //Edit: add MPC subscription
+    _mpc_cmd_sub.update(&_mpc_cmd);
 
 	// run on actuator publications corresponding to VTOL mode
 	bool should_run = false;

@@ -115,6 +115,7 @@ private:
 	manual_control_setpoint_s	_manual_control_sp{};
 	vehicle_control_mode_s		_v_control_mode{};
 	vehicle_status_s		_vehicle_status{};
+    vehicle_rates_setpoint_s _v_rates_sp{};
 
 	bool _actuators_0_circuit_breaker_enabled{false};	/**< circuit breaker to suppress output */
 	bool _landed{true};

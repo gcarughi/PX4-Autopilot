@@ -368,16 +368,23 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
 	float L         = math::constrain(get_control(0, 0), -1.0f, 1.0f);
 	float M         = math::constrain(get_control(0, 1), -1.0f, 1.0f);
 	float N         = math::constrain(get_control(0, 2), -1.0f, 1.0f);
-	float T         = math::constrain(get_control(0, 3), 0.0f, 1.0f);
-    T = T * 4.0f * T_MAX;
+
+	float Tz         = math::constrain(get_control(0, 3), -1.0f, 1.0f);
+	float Tx         = math::constrain(get_control(0, 4), -1.0f, 1.0f);
+    Tz *= 4.0f * T_MAX;
+    Tx *= 4.0f * T_MAX;
+    //T = T * 4.0f * T_MAX;
+    float chi_cmd = atan2f( Tx, Tz );
+
     float M_MAX = 2.0f;
     float AIRSPEED_MAX = 40.0f;
     L = L * M_MAX;
     M = M * M_MAX;
     N = N * M_MAX;
 
-	float chi_cmd   = math::constrain(get_control(0, 4), -1.0f, 1.0f);
-    chi_cmd = ( chi_max - chi_min ) * chi_cmd + chi_min;
+
+	//float chi_cmd   = math::constrain(get_control(0, 4), -1.0f, 1.0f);
+    //chi_cmd = ( chi_max - chi_min ) * chi_cmd + chi_min;
 
 	float airspeed  = math::constrain(get_control(0, 5), 1e-8f, 1.0f);
     airspeed = AIRSPEED_MAX * airspeed;
@@ -513,8 +520,8 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     
     float v[8];
     for( int i=0; i<=7; i++){
-        v[i] =    A_pinv[5*i]     * T * s_chi 
-                + A_pinv[5*i + 1] * T * c_chi
+        v[i] =    A_pinv[5*i]     * Tx
+                + A_pinv[5*i + 1] * Tz
                 + A_pinv[5*i + 2] * L
                 + A_pinv[5*i + 3] * M
                 + A_pinv[5*i + 4] * N;

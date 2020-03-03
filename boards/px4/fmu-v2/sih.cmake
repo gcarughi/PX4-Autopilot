@@ -72,7 +72,7 @@ px4_add_board(
 		ekf2
 		#events
         #fw_att_control
-        #fw_pos_control_l1
+        fw_pos_control_l1
 		land_detector
 		#landing_target_estimator
 		load_mon
@@ -88,7 +88,7 @@ px4_add_board(
 		sensors
         sih
 		#temperature_compensation
-		vmount
+        #vmount
 		vtol_att_control
 	SYSTEMCMDS
 		bl_update

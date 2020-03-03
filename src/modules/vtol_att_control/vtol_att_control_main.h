@@ -79,6 +79,7 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vtol_vehicle_status.h>
+#include <uORB/topics/mpc_command.h>
 
 #include "standard.h"
 #include "tailsitter.h"
@@ -126,12 +127,17 @@ public:
 	struct vehicle_local_position_setpoint_s	*get_local_pos_sp() {return &_local_pos_sp;}
 	struct vtol_vehicle_status_s			*get_vtol_vehicle_status() {return &_vtol_vehicle_status;}
 
+    //Edit: add MPC command return function
+	struct mpc_command_s			*get_mpc_cmd() {return &_mpc_cmd;}
 	struct Params 					*get_params() {return &_params;}
 
 private:
 
 	uORB::SubscriptionCallbackWorkItem _actuator_inputs_fw{this, ORB_ID(actuator_controls_virtual_fw)};
 	uORB::SubscriptionCallbackWorkItem _actuator_inputs_mc{this, ORB_ID(actuator_controls_virtual_mc)};
+
+    //Edit: add MPC subscription
+	uORB::SubscriptionCallbackWorkItem _mpc_cmd_sub{this, ORB_ID(mpc_command)};
 
 	uORB::Subscription _airspeed_validated_sub{ORB_ID(airspeed_validated)};			// airspeed subscription
 	uORB::Subscription _fw_virtual_att_sp_sub{ORB_ID(fw_virtual_attitude_setpoint)};
@@ -146,6 +152,7 @@ private:
 	uORB::Subscription _v_att_sub{ORB_ID(vehicle_attitude)};		//vehicle attitude subscription
 	uORB::Subscription _v_control_mode_sub{ORB_ID(vehicle_control_mode)};	//vehicle control mode subscription
 	uORB::Subscription _vehicle_cmd_sub{ORB_ID(vehicle_command)};
+
 
 	uORB::Publication<actuator_controls_s>		_actuators_0_pub{ORB_ID(actuator_controls_0)};		//input for the mixer (roll,pitch,yaw,thrust)
 	uORB::Publication<actuator_controls_s>		_actuators_1_pub{ORB_ID(actuator_controls_1)};
@@ -175,9 +182,13 @@ private:
 	vehicle_local_position_setpoint_s	_local_pos_sp{};
 	vtol_vehicle_status_s 			_vtol_vehicle_status{};
 
+    //Edit: add MPC struct
+    mpc_command_s                   _mpc_cmd{};
+
 	Params _params{};	// struct holding the parameters
 
 	struct {
+		param_t use_ext_ctrl;
 		param_t idle_pwm_mc;
 		param_t vtol_motor_id;
 		param_t vtol_fw_permanent_stab;

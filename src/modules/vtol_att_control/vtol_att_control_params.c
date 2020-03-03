@@ -40,6 +40,14 @@
  */
 
 /**
+ * Use external Controller
+ *
+ * @unit bool
+ * @group VTOL Attitude Control
+ */
+PARAM_DEFINE_INT32(VT_USE_EXT_CTRL, 1);
+
+/**
  * Idle speed of VTOL when in multicopter mode
  *
  * @unit us
@@ -74,7 +82,7 @@ PARAM_DEFINE_INT32(VT_FW_PERM_STAB, 0);
  * @reboot_required true
  * @group VTOL Attitude Control
  */
-PARAM_DEFINE_INT32(VT_TYPE, 0);
+PARAM_DEFINE_INT32(VT_TYPE, 1);
 
 /**
  * Lock elevons in multicopter mode

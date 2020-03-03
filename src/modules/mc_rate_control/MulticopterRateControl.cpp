@@ -216,27 +216,24 @@ MulticopterRateControl::Run()
 				_thrust_sp = _manual_control_sp.z;
 
 				// publish rate setpoint
-				vehicle_rates_setpoint_s v_rates_sp{};
-				v_rates_sp.roll = _rates_sp(0);
-				v_rates_sp.pitch = _rates_sp(1);
-				v_rates_sp.yaw = _rates_sp(2);
-				v_rates_sp.thrust_body[0] = 0.0f;
-				v_rates_sp.thrust_body[1] = 0.0f;
-				v_rates_sp.thrust_body[2] = -_thrust_sp;
-				v_rates_sp.timestamp = hrt_absolute_time();
+				_v_rates_sp.roll = _rates_sp(0);
+				_v_rates_sp.pitch = _rates_sp(1);
+				_v_rates_sp.yaw = _rates_sp(2);
+				_v_rates_sp.thrust_body[0] = 0.0f;
+				_v_rates_sp.thrust_body[1] = 0.0f;
+				_v_rates_sp.thrust_body[2] = -_thrust_sp;
+				_v_rates_sp.timestamp = hrt_absolute_time();
 
-				_v_rates_sp_pub.publish(v_rates_sp);
+				_v_rates_sp_pub.publish(_v_rates_sp);
 			}
 
 		} else {
 			// use rates setpoint topic
-			vehicle_rates_setpoint_s v_rates_sp;
-
-			if (_v_rates_sp_sub.update(&v_rates_sp)) {
-				_rates_sp(0) = v_rates_sp.roll;
-				_rates_sp(1) = v_rates_sp.pitch;
-				_rates_sp(2) = v_rates_sp.yaw;
-				_thrust_sp = -v_rates_sp.thrust_body[2];
+			if (_v_rates_sp_sub.update(&_v_rates_sp)) {
+				_rates_sp(0) = _v_rates_sp.roll;
+				_rates_sp(1) = _v_rates_sp.pitch;
+				_rates_sp(2) = _v_rates_sp.yaw;
+				_thrust_sp = -_v_rates_sp.thrust_body[2];
 			}
 		}
 
@@ -285,11 +282,17 @@ MulticopterRateControl::Run()
 
 			// publish actuator controls
 			actuator_controls_s actuators{};
-			actuators.control[actuator_controls_s::INDEX_ROLL] = PX4_ISFINITE(att_control(0)) ? att_control(0) : 0.0f;
-			actuators.control[actuator_controls_s::INDEX_PITCH] = PX4_ISFINITE(att_control(1)) ? att_control(1) : 0.0f;
-			actuators.control[actuator_controls_s::INDEX_YAW] = PX4_ISFINITE(att_control(2)) ? att_control(2) : 0.0f;
-			actuators.control[actuator_controls_s::INDEX_THROTTLE] = PX4_ISFINITE(_thrust_sp) ? _thrust_sp : 0.0f;
-			actuators.control[actuator_controls_s::INDEX_LANDING_GEAR] = (float)_landing_gear.landing_gear;
+			actuators.control[actuator_controls_s::INDEX_ROLL] = 
+                PX4_ISFINITE(att_control(0)) ? att_control(0) : 0.0f;
+			actuators.control[actuator_controls_s::INDEX_PITCH] = 
+                PX4_ISFINITE(att_control(1)) ? att_control(1) : 0.0f;
+			actuators.control[actuator_controls_s::INDEX_YAW] = 
+                PX4_ISFINITE(att_control(2)) ? att_control(2) : 0.0f;
+			actuators.control[actuator_controls_s::INDEX_THROTTLE] = 
+                PX4_ISFINITE(_v_rates_sp.thrust_body[2]) ? _v_rates_sp.thrust_body[2] : 0.0f;
+			actuators.control[actuator_controls_s::INDEX_THROTTLE+1] = 
+                PX4_ISFINITE(_v_rates_sp.thrust_body[0]) ? _v_rates_sp.thrust_body[0] : 0.0f;
+
 			actuators.timestamp_sample = angular_velocity.timestamp_sample;
 
 			// scale effort by battery status if enabled
@@ -303,7 +306,7 @@ MulticopterRateControl::Run()
 				}
 
 				if (_battery_status_scale > 0.0f) {
-					for (int i = 0; i < 4; i++) {
+					for (int i = 0; i < 5; i++) {
 						actuators.control[i] *= _battery_status_scale;
 					}
 				}

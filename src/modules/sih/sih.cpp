@@ -419,6 +419,9 @@ void Sih::generate_force_and_torques_vtol()
     _Fa_B += F_a;
     _Ma_B += M_a;
 
+    //printf("F_a: %f %f %f\n",(double)F_a(0),(double)F_a(1),(double)F_a(2));
+    //printf("M_a: %f %f %f\n",(double)M_a(0),(double)M_a(1),(double)M_a(2));
+
     //left wing
     v_a = _v_B + _w_B.cross( aero_pos.col(1) );
     AoA = std::atan2( v_a(2), v_a(0) );
@@ -430,20 +433,27 @@ void Sih::generate_force_and_torques_vtol()
 
     _Fa_B += F_a;
     _Ma_B += M_a;
+    //printf("F_a: %f %f %f\n",(double)F_a(0),(double)F_a(1),(double)F_a(2));
+    //printf("M_a: %f %f %f\n",(double)M_a(0),(double)M_a(1),(double)M_a(2));
 
     //fuselage
     v_a = _v_B + _w_B.cross( aero_pos.col(2) );
     compute_aero_coeff( &c_d, &c_l, 1, 0.0f );
 
-    F_a = - 0.5f * rho * c_d 
-        * diag( Vector3f(   S_Fn * std::abs(v_a(0)), 
-                            S_Fe * std::abs(v_a(1)), 
-                            S_Fd * std::abs(v_a(2)) 
-                         )) * v_a;
+    F_a(0) = S_Fn * sqrtf( v_a(0) * v_a(0) ) * v_a(0) * c_d;
+    F_a(1) = S_Fe * sqrtf( v_a(1) * v_a(1) ) * v_a(1) * c_d;
+    F_a(2) = S_Fd * sqrtf( v_a(2) * v_a(2) ) * v_a(2) * c_d;
+
+    F_a *= -0.5f * rho;
     M_a = Vector3f( aero_pos.col(2) ).cross( F_a );
 
     _Fa_B += F_a;
     _Ma_B += M_a;
+    //printf("_v_I: %f %f %f\n",(double)_v_I(0),(double)_v_I(1),(double)_v_I(2));
+    //printf("_v_B: %f %f %f\n",(double)_v_B(0),(double)_v_B(1),(double)_v_B(2));
+    //printf("v_a: %f %f %f\n",(double)v_a(0),(double)v_a(1),(double)v_a(2));
+    //printf("F_a: %f %f %f\n",(double)F_a(0),(double)F_a(1),(double)F_a(2));
+    //printf("M_a: %f %f %f\n",(double)M_a(0),(double)M_a(1),(double)M_a(2));
 
     //elevator
     v_a = _v_B + _w_B.cross( aero_pos.col(3) );
@@ -456,6 +466,8 @@ void Sih::generate_force_and_torques_vtol()
 
     _Fa_B += F_a;
     _Ma_B += M_a;
+    //printf("F_a: %f %f %f\n",(double)F_a(0),(double)F_a(1),(double)F_a(2));
+    //printf("M_a: %f %f %f\n",(double)M_a(0),(double)M_a(1),(double)M_a(2));
 
     //rudder
     v_a = _v_B + _w_B.cross( aero_pos.col(4) );
@@ -469,6 +481,9 @@ void Sih::generate_force_and_torques_vtol()
 
     _Fa_B += F_a;
     _Ma_B += M_a;
+    //printf("F_a: %f %f %f\n",(double)F_a(0),(double)F_a(1),(double)F_a(2));
+    //printf("M_a: %f %f %f\n",(double)M_a(0),(double)M_a(1),(double)M_a(2));
+    //printf("\n");
 
     /*
      * control surfaces

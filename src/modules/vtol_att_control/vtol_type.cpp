@@ -187,9 +187,6 @@ void VtolType::update_mc_state_custom()
     _v_att_sp->q_d[2] = tmp_quat(2);
     _v_att_sp->q_d[3] = tmp_quat(3);
 
-    printf("thrust up: %f\n",(double)_v_att_sp->thrust_body[2]);
-    printf("thrust forward: %f\n",(double)_v_att_sp->thrust_body[0]);
-
 }
 
 void VtolType::update_fw_state()

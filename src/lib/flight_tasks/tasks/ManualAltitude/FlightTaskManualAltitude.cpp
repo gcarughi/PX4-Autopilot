@@ -163,7 +163,6 @@ void FlightTaskManualAltitude::_updateAltitudeLock()
 
 	} else {
 		// normal mode where height is dependent on local frame
-
 		if (apply_brake && stopped && !PX4_ISFINITE(_position_setpoint(2))) {
 			// lock position
 			_position_setpoint(2) = _position(2);
@@ -187,7 +186,8 @@ void FlightTaskManualAltitude::_updateAltitudeLock()
 
 		} else  {
 			// user demands velocity change
-			_position_setpoint(2) = NAN;
+			//_position_setpoint(2) = NAN;
+			_position_setpoint(2) = _position(2) + _deltatime * _velocity_setpoint(2);
 			// ensure that maximum altitude is respected
 			_respectMaxAltitude();
 		}
@@ -280,6 +280,8 @@ void FlightTaskManualAltitude::_respectGroundSlowdown()
 void FlightTaskManualAltitude::_rotateIntoHeadingFrame(Vector2f &v)
 {
 	float yaw_rotate = PX4_ISFINITE(_yaw_setpoint) ? _yaw_setpoint : _yaw;
+    // Edit: use actual yaw for rotation into world frame
+	//float yaw_rotate = _yaw;
 	Vector3f v_r = Vector3f(Dcmf(Eulerf(0.0f, 0.0f, yaw_rotate)) * Vector3f(v(0), v(1), 0.0f));
 	v(0) = v_r(0);
 	v(1) = v_r(1);
@@ -308,7 +310,11 @@ bool FlightTaskManualAltitude::_isYawInput()
 void FlightTaskManualAltitude::_unlockYaw()
 {
 	// no fixed heading when rotating around yaw by stick
-	_yaw_setpoint = NAN;
+	//_yaw_setpoint = NAN;
+    
+    // integrate yawrate when rotation around yaw by stick
+	_yaw_setpoint = _yaw + _deltatime * _yawspeed_setpoint;
+
 }
 
 void FlightTaskManualAltitude::_lockYaw()

@@ -347,6 +347,7 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     float T_MAX = 12.0f;
     float chi_max = math::radians(90.0f);
     float chi_min = math::radians(-10.0f);
+    float d_chi_max = math::radians(10.0f);
 
     //aerodynamics
     float C_La = 0.058649f;
@@ -503,7 +504,6 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
         }
     }
 
-
     //printf("A_pinv:\n");
     //for(int i = 0; i<=7; i++){
     //    printf("%f %f %f %f %f\n", (double)A_pinv[5*i], (double)A_pinv[5*i+1], 
@@ -529,8 +529,6 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
 
     d_chi_r = atan2f( v[0] + v[2] , v[1] + v[3] );
     d_chi_l = atan2f( v[4] + v[6] , v[5] + v[7] );
-    chi_r   = chi_cmd + d_chi_r;
-    chi_l   = chi_cmd + d_chi_l;
 
 
     //printf("d_chi_r alloc: %f\n",(double)d_chi_r);
@@ -540,6 +538,12 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     t2 = v[2] * sinf( d_chi_r ) + v[3] * cosf( d_chi_r );
     t3 = v[4] * sinf( d_chi_l ) + v[5] * cosf( d_chi_l );
     t4 = v[6] * sinf( d_chi_l ) + v[7] * cosf( d_chi_l );
+
+	d_chi_r = math::constrain( d_chi_r, -d_chi_max, d_chi_max);
+	d_chi_l = math::constrain( d_chi_l, -d_chi_max, d_chi_max);
+
+    chi_r   = chi_cmd + d_chi_r;
+    chi_l   = chi_cmd + d_chi_l;
 
     //printf("v: %f, %f, %f, %f\n",(double)v[0],(double)v[1],(double)v[2],(double)v[3]);
     //printf("%f, %f, %f, %f\n",(double)v[4],(double)v[5],(double)v[6],(double)v[7]);

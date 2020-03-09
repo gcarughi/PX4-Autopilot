@@ -654,7 +654,7 @@ FixedwingPositionControl::update_desired_altitude(float dt)
     float manual_input = _manual.x;
 	if (_vehicle_status.is_vtol) {
         //Edit: make sure FW and MC controls are similar for VTOL
-        manual_input = 2.0f * (_manual.z - 0.5f); // in [-1,1];
+        manual_input = -2.0f * (_manual.z - 0.5f); // in [-1,1];
 	}
 
     if ( manual_input > deadBand) {

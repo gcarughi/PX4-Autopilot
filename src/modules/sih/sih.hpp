@@ -188,6 +188,7 @@ private:
 	float _MASS, _T_MAX, _Q_MAX, _L_ROLL, _L_PITCH, _KDV, _KDW, _H0;
 	double _LAT0, _LON0, _COS_LAT0;
     bool _CHECK_ROBUST;
+    float _DIST;
     //double _CHECK_ROBUST;
 	matrix::Vector3f _G_I;  // gravity vector of the vehicle in inertial frame [N]
 	matrix::Matrix3f _I;    // vehicle inertia matrix
@@ -245,6 +246,7 @@ private:
 	// parameters defined in sih_params.c
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::SIH_ROBUST>) _sih_robust,
+		(ParamFloat<px4::params::SIH_DIST>) _sih_dist,
 		(ParamFloat<px4::params::SIH_MASS>) _sih_mass,
 		(ParamFloat<px4::params::SIH_IXX>) _sih_ixx,
 		(ParamFloat<px4::params::SIH_IYY>) _sih_iyy,

@@ -53,6 +53,8 @@
  */
 PARAM_DEFINE_INT32(SIH_ROBUST, 0);
 
+PARAM_DEFINE_FLOAT(SIH_DIST, 0);
+
 /**
  * Vehicle mass
  *

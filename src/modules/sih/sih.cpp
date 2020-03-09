@@ -191,6 +191,7 @@ void Sih::parameters_update_poll()
 void Sih::parameters_updated()
 {
     _CHECK_ROBUST = (bool)_sih_robust.get();
+    _DIST       = _sih_dist.get();
 
 	_T_MAX      = _sih_t_max.get();
 	_Q_MAX      = _sih_q_max.get();
@@ -496,6 +497,9 @@ void Sih::generate_force_and_torques_vtol()
     _Ma_B += Vector3f( L_delta, M_delta, N_delta );
 
     //printf("M_delta: %f\n",(double)M_delta);
+    
+    _Ma_B(0) += _DIST;
+    
 
     /*
      * modify values to test robustness

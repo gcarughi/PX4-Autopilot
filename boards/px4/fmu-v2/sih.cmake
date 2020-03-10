@@ -71,7 +71,7 @@ px4_add_board(
 		dataman
 		ekf2
 		#events
-        #fw_att_control
+        fw_att_control
         fw_pos_control_l1
 		land_detector
 		#landing_target_estimator

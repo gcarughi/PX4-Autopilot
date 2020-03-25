@@ -379,13 +379,17 @@ bool MixingOutput::update()
 	bool stop_motors = mixed_num_outputs == 0 || !_throttle_armed;
 
 	/* overwrite outputs in case of lockdown or parachute triggering with disarmed values */
+    int idx_parachute = 2;
 	if (_armed.lockdown || _armed.manual_lockdown) {
 		for (size_t i = 0; i < mixed_num_outputs; i++) {
 			_current_output_value[i] = _disarmed_value[i];
 		}
-
+        _current_output_value[idx_parachute] = _failsafe_value[idx_parachute];
 		stop_motors = true;
-	}
+	} 
+    else {
+        _current_output_value[idx_parachute] = _disarmed_value[idx_parachute];
+    }
 
 	/* apply _param_mot_ordering */
 	reorderOutputs(_current_output_value);

@@ -378,18 +378,30 @@ bool MixingOutput::update()
 
 	bool stop_motors = mixed_num_outputs == 0 || !_throttle_armed;
 
-	/* overwrite outputs in case of lockdown or parachute triggering with disarmed values */
-    int idx_parachute = 2;
-	if (_armed.lockdown || _armed.manual_lockdown) {
-		for (size_t i = 0; i < mixed_num_outputs; i++) {
-			_current_output_value[i] = _disarmed_value[i];
-		}
-        _current_output_value[idx_parachute] = _failsafe_value[idx_parachute];
-		stop_motors = true;
-	} 
-    else {
+	/* overwrite outputs in case of lockdown */
+    /* Note: this assumes that the parachute is attached to an AUX output.
+     *      In case a MAIN output should be used, the px4io driver and IO 
+     *      firmware need to be changed! 
+     *      */
+    int idx_parachute = _param_mot_para_idx.get();
+
+    //TODO: fix this when changing simple mixer
+    if ( idx_parachute >= 0 )
+    {
         _current_output_value[idx_parachute] = _disarmed_value[idx_parachute];
     }
+
+	if (_armed.lockdown || _armed.manual_lockdown) {
+		for (size_t i = 0; i < mixed_num_outputs; i++) {
+            // set outputs to disarmed value
+            _current_output_value[i] = _disarmed_value[i];
+		}
+		stop_motors = true;
+
+        if ( idx_parachute >= 0 ){
+            _current_output_value[ idx_parachute ] = _failsafe_value[idx_parachute];
+        }
+	} 
 
 	/* apply _param_mot_ordering */
 	reorderOutputs(_current_output_value);

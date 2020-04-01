@@ -291,34 +291,9 @@ SimpleMixer::mix(float *outputs, unsigned space)
 
     outputs[0] = (2.0f * delta_e - (delta_max + delta_min))/(delta_max - delta_min);
     outputs[1] = (2.0f * delta_r - (delta_max + delta_min))/(delta_max - delta_min);
-    //printf("output: %f %f\n",(double)outputs[0],(double)outputs[1]);
+    outputs[2] = 0.0;
 
-
- return 2;
-
-	//float sum = 0.0f;
-
-	//if (_pinfo == nullptr) {
-	//	return 0;
-	//}
-
-	//if (space < 1) {
-	//	return 0;
-	//}
-
-	//for (unsigned i = 0; i < _pinfo->control_count; i++) {
-	//	float input = 0.0f;
-
-	//	_control_cb(_cb_handle,
-	//		    _pinfo->controls[i].control_group,
-	//		    _pinfo->controls[i].control_index,
-	//		    input);
-
-	//	sum += scale(_pinfo->controls[i].scaler, input);
-	//}
-
-	//*outputs = scale(_pinfo->output_scaler, sum);
-	//return 1;
+ return 3;
 }
 
 void

@@ -17,6 +17,10 @@
  */
 PARAM_DEFINE_INT32(MC_AIRMODE, 0);
 
+
+// parachute index
+PARAM_DEFINE_INT32(MOT_PARA_IDX, 2);
+
 /**
  * Motor Ordering
  *

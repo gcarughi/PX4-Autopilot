@@ -345,8 +345,8 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     float C_Q = 1.99017e-7f;
     float C = C_Q / C_T;
     float T_MAX = 12.0f;
-    float chi_max = math::radians(90.0f);
-    float chi_min = math::radians(-10.0f);
+    //float chi_max = math::radians(90.0f);
+    //float chi_min = math::radians(-10.0f);
     float d_chi_max = math::radians(10.0f);
 
     //aerodynamics
@@ -545,20 +545,14 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     chi_r   = chi_cmd + d_chi_r;
     chi_l   = chi_cmd + d_chi_l;
 
-    //printf("v: %f, %f, %f, %f\n",(double)v[0],(double)v[1],(double)v[2],(double)v[3]);
-    //printf("%f, %f, %f, %f\n",(double)v[4],(double)v[5],(double)v[6],(double)v[7]);
-    //printf("tilt in alloc: %f %f\n",(double)chi_r,(double)chi_l);
-    //printf("thrusts: %f, %f, %f, %f\n",(double)t1, (double)t2, (double)t3, (double)t4);
-    //printf("\n");
-
     // scale thrust to PWM
     #ifndef SIM 
     outputs[0] = -1.146746f+sqrtf(0.0821782f+0.355259f*t1);
     outputs[1] = -1.146746f+sqrtf(0.0821782f+0.355259f*t2);
     outputs[2] = -1.146746f+sqrtf(0.0821782f+0.355259f*t3);
     outputs[3] = -1.146746f+sqrtf(0.0821782f+0.355259f*t4);
-    outputs[4] = -0.9602f * chi_r + 0.7106f;
-    outputs[5] = 0.9602f  * chi_l - 0.7106f;
+    outputs[4] = -0.9602f * chi_l + 0.7106f;
+    outputs[5] = 0.9602f  * chi_r - 0.7106f;
     outputs[6] = -(2.0f * delta_a - (delta_max + delta_min))/(delta_max - delta_min);
     #endif
 
@@ -567,33 +561,10 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     outputs[1] = (2.0f * t2) / T_MAX -1.0f;
     outputs[2] = (2.0f * t3) / T_MAX -1.0f;
     outputs[3] = (2.0f * t4) / T_MAX -1.0f;
-    outputs[4] = (2.0f * chi_r - (chi_max + chi_min))/(chi_max - chi_min);
-    outputs[5] = (2.0f * chi_l - (chi_max + chi_min))/(chi_max - chi_min);
+    outputs[4] = -0.9602f * chi_l + 0.7106f;
+    outputs[5] = 0.9602f  * chi_r - 0.7106f;
     outputs[6] = -(2.0f * delta_a - (delta_max + delta_min))/(delta_max - delta_min);
-    //outputs[0] = t1 / T_MAX;
-    //outputs[1] = t2 / T_MAX;
-    //outputs[2] = t3 / T_MAX;
-    //outputs[3] = t4 / T_MAX;
     #endif
-
-    //printf("in mixer\n");
-    //printf("thrust: %f\n",(double)T);
-    //printf("roll: %f\n",(double)L);
-    //printf("pitch: %f\n",(double)M);
-    //printf("yaw: %f\n",(double)N);
-    //printf("t1: %f\n",(double)t1);
-    //printf("t2: %f\n",(double)t2);
-    //printf("t3: %f\n",(double)t3);
-    //printf("t4: %f\n",(double)t4);
-    //printf("dchi_r: %f\n",(double)d_chi_r);
-    //printf("dchi_l: %f\n",(double)d_chi_l);
-    //printf("outputs t: %f %f %f %f\n\n",(double)outputs[0],(double)outputs[1],(double)outputs[2],(double)outputs[3]);
-    //printf("delta_a: %f\n",(double)delta_a);
-    //printf("delta_e: %f\n",(double)delta_e);
-    //printf("delta_r: %f\n",(double)delta_r);
-    //printf("outputs delta: %f\n",(double)outputs[6]);
-    //printf("\n");
-
 
 }
 

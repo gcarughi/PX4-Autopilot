@@ -362,8 +362,10 @@ void Sih::generate_force_and_torques_vtol()
     T(1) = _T_MAX * _u[1];
     T(2) = _T_MAX * _u[2];
     T(3) = _T_MAX * _u[3];
-    float chi_r     = _u[4] * (chi_max - chi_min) + chi_min;
-    float chi_l     = _u[5] * (chi_max - chi_min) + chi_min;
+
+    float chi_l     = -( 2.0f *_u[4] - 1.7106f ) / 0.9602f;
+    float chi_r     =  ( 2.0f *_u[5] - 0.2894f ) / 0.9602f;
+
     float delta_a   = _u[6] * (delta_min - delta_max) + delta_max;
     float delta_e   = _u[7] * (delta_max - delta_min) + delta_min;
     float delta_r   = _u[8] * (delta_max - delta_min) + delta_min;

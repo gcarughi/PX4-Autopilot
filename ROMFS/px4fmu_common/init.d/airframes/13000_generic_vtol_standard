@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name SIH Quadplane VTOL
+# @name Generic Quadplane VTOL
 #
 # @type Standard VTOL
 # @class VTOL

@@ -121,6 +121,8 @@ private:
 
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 	uORB::Subscription _actuator_out_sub{ORB_ID(actuator_outputs)};
+	uORB::Subscription _actuator_out_sub_main{ORB_ID(actuator_outputs_main)};
+	uORB::Subscription _actuator_out_sub_aux{ORB_ID(actuator_outputs_aux)};
 
 	// hard constants
 	static constexpr uint16_t NB_MOTORS = 9;               // rotor speeds (4), tilt angles (2), control surfaces(3)
@@ -171,6 +173,8 @@ private:
 	matrix::Vector3f    _w_B_dot;       // body rates differential
     matrix::Vector2f    chi;            // tilt angles [rad]
 	float       _u[NB_MOTORS];  // motor signals
+	float       _u_main[8];  // motor signals
+	float       _u_aux[6];  // motor signals
 
 
 	// sensors reconstruction

@@ -234,6 +234,14 @@ void Sih::init_variables()
         _u[i] = 0.0f;
     }
 
+    for( int i = 0; i<8; i++ ){
+        _u_main[i] = 0.0f;
+    }
+
+    for( int i = 0; i<6; i++ ){
+        _u_aux[i] = 0.0f;
+    }
+
     _Ft_B.setZero();
     _Mt_B.setZero();
     _Fa_B.setZero();
@@ -323,11 +331,27 @@ void Sih::read_motors()
 {
 	actuator_outputs_s actuators_out;
 
-	if (_actuator_out_sub.update(&actuators_out)) {
-		for (int i = 0; i < NB_MOTORS; i++) { // saturate the motor signals
-			_u[i] = constrain((actuators_out.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN), 0.0f, 1.0f);
+	//if (_actuator_out_sub.update(&actuators_out)) {
+	//	for (int i = 0; i < NB_MOTORS; i++) { // saturate the motor signals
+	//		_u[i] = constrain((actuators_out.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN), 0.0f, 1.0f);
+	//	}
+	//}
+
+    // load main motor pwm
+	if (_actuator_out_sub_main.update(&actuators_out)) {
+		for (int i = 0; i < 8; i++) { // saturate the motor signals
+			_u_main[i] = constrain((actuators_out.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN), 0.0f, 1.0f);
+		}
+
+	}
+
+    // load aux motor pwm
+	if (_actuator_out_sub_aux.update(&actuators_out)) {
+		for (int i = 0; i < 6; i++) { // saturate the motor signals
+			_u_aux[i] = constrain((actuators_out.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN), 0.0f, 1.0f);
 		}
 	}
+
 }
 
 // generate the motors thrust and torque in the body frame
@@ -358,17 +382,25 @@ void Sih::generate_force_and_torques_vtol()
      */
 
     Vector<float,4> T;
-    T(0) = _T_MAX * _u[0];
-    T(1) = _T_MAX * _u[1];
-    T(2) = _T_MAX * _u[2];
-    T(3) = _T_MAX * _u[3];
+    //T(0) = _T_MAX * _u[0];
+    //T(1) = _T_MAX * _u[1];
+    //T(2) = _T_MAX * _u[2];
+    //T(3) = _T_MAX * _u[3];
+    T(0) = (powf(2.0f*_u_main[0] + 0.14676f, 2.0f) - 0.0821782f) / 0.355359f;
+    T(1) = (powf(2.0f*_u_main[1] + 0.14676f, 2.0f) - 0.0821782f) / 0.355359f;
+    T(2) = (powf(2.0f*_u_main[2] + 0.14676f, 2.0f) - 0.0821782f) / 0.355359f;
+    T(3) = (powf(2.0f*_u_main[3] + 0.14676f, 2.0f) - 0.0821782f) / 0.355359f;
 
-    float chi_l     = -( 2.0f *_u[4] - 1.7106f ) / 0.9602f;
-    float chi_r     =  ( 2.0f *_u[5] - 0.2894f ) / 0.9602f;
+    float chi_l     = -( 2.0f *_u_main[4] - 1.7106f ) / 0.9602f;
+    float chi_r     =  ( 2.0f *_u_main[5] - 0.2894f ) / 0.9602f;
 
-    float delta_a   = _u[6] * (delta_min - delta_max) + delta_max;
-    float delta_e   = _u[7] * (delta_max - delta_min) + delta_min;
-    float delta_r   = _u[8] * (delta_max - delta_min) + delta_min;
+    float delta_a   = _u_main[6] * (delta_min - delta_max) + delta_max;
+    float delta_e   = _u_aux[0] * (delta_max - delta_min) + delta_min;
+    float delta_r   = _u_aux[1] * (delta_max - delta_min) + delta_min;
+
+    //printf("delta_a: %f\n",(double)delta_a);
+    //printf("delta_e: %f\n",(double)delta_e);
+    //printf("delta_r: %f\n",(double)delta_r);
 
     Dcmf R_chir(AxisAngle<float>(Vector3f(0,1,0), -chi_r));
     Dcmf R_chil(AxisAngle<float>(Vector3f(0,1,0), -chi_l));

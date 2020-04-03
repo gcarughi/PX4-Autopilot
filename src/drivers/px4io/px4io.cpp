@@ -271,6 +271,7 @@ private:
 	/* advertised topics */
 	uORB::PublicationMulti<input_rc_s>			_to_input_rc{ORB_ID(input_rc)};
 	uORB::PublicationMulti<actuator_outputs_s>		_to_outputs{ORB_ID(actuator_outputs)};
+	uORB::PublicationMulti<actuator_outputs_s>		_to_outputs_main{ORB_ID(actuator_outputs_main)};
 	uORB::PublicationMulti<multirotor_motor_limits_s>	_to_mixer_status{ORB_ID(multirotor_motor_limits)};
 	uORB::Publication<servorail_status_s>			_to_servorail{ORB_ID(servorail_status)};
 	uORB::Publication<safety_s>				_to_safety{ORB_ID(safety)};
@@ -1953,6 +1954,7 @@ PX4IO::io_publish_pwm_outputs()
 	}
 
 	_to_outputs.publish(outputs);
+	_to_outputs_main.publish(outputs);
 
 	/* get mixer status flags from IO */
 	MultirotorMixer::saturation_status saturation_status;

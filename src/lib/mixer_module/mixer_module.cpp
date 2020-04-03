@@ -428,9 +428,9 @@ MixingOutput::setAndPublishActuatorOutputs(unsigned num_outputs, actuator_output
 	for (size_t i = 0; i < num_outputs; ++i) {
 		actuator_outputs.output[i] = _current_output_value[i];
 	}
-
 	actuator_outputs.timestamp = hrt_absolute_time();
 	_outputs_pub.publish(actuator_outputs);
+	_outputs_pub_aux.publish(actuator_outputs);
 }
 
 void

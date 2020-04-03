@@ -45,8 +45,6 @@
 
 #include <mathlib/mathlib.h>
 
-#define SIM
-
 #ifdef MIXER_MULTIROTOR_USE_MOCK_GEOMETRY
 enum class MultirotorGeometry : MultirotorGeometryUnderlyingType {
 	QUAD_X,
@@ -546,7 +544,6 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     chi_l   = chi_cmd + d_chi_l;
 
     // scale thrust to PWM
-    #ifndef SIM 
     outputs[0] = -1.146746f+sqrtf(0.0821782f+0.355259f*t1);
     outputs[1] = -1.146746f+sqrtf(0.0821782f+0.355259f*t2);
     outputs[2] = -1.146746f+sqrtf(0.0821782f+0.355259f*t3);
@@ -554,18 +551,6 @@ void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust,
     outputs[4] = -0.9602f * chi_l + 0.7106f;
     outputs[5] = 0.9602f  * chi_r - 0.7106f;
     outputs[6] = -(2.0f * delta_a - (delta_max + delta_min))/(delta_max - delta_min);
-    #endif
-
-    #ifdef SIM
-    outputs[0] = (2.0f * t1) / T_MAX -1.0f;
-    outputs[1] = (2.0f * t2) / T_MAX -1.0f;
-    outputs[2] = (2.0f * t3) / T_MAX -1.0f;
-    outputs[3] = (2.0f * t4) / T_MAX -1.0f;
-    outputs[4] = -0.9602f * chi_l + 0.7106f;
-    outputs[5] = 0.9602f  * chi_r - 0.7106f;
-    outputs[6] = -(2.0f * delta_a - (delta_max + delta_min))/(delta_max - delta_min);
-    #endif
-
 }
 
 unsigned

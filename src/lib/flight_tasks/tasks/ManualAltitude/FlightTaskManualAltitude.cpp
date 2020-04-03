@@ -279,12 +279,16 @@ void FlightTaskManualAltitude::_respectGroundSlowdown()
 
 void FlightTaskManualAltitude::_rotateIntoHeadingFrame(Vector2f &v)
 {
+    Vector3f v_B = Vector3f(v(0), v(1), 0.0f);
 	float yaw_rotate = PX4_ISFINITE(_yaw_setpoint) ? _yaw_setpoint : _yaw;
+    if ( v_B.norm() > 5.0f )
+    {
     // Edit: use actual yaw for rotation into world frame
-	//float yaw_rotate = _yaw;
-	Vector3f v_r = Vector3f(Dcmf(Eulerf(0.0f, 0.0f, yaw_rotate)) * Vector3f(v(0), v(1), 0.0f));
-	v(0) = v_r(0);
-	v(1) = v_r(1);
+	    yaw_rotate = _yaw;
+    }
+	Vector3f v_I = Vector3f(Dcmf(Eulerf(0.0f, 0.0f, yaw_rotate)) * v_B);
+	v(0) = v_I(0);
+	v(1) = v_I(1);
 }
 
 void FlightTaskManualAltitude::_updateHeadingSetpoints()

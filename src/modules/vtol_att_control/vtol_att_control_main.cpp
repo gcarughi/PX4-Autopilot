@@ -212,8 +212,6 @@ VtolAttitudeControl::parameters_update()
 {
 	float v;
 	int32_t l;
-	/* use external controller */
-	param_get(_params_handles.use_ext_ctrl, &_params.use_ext_ctrl);
 
 	/* idle pwm for mc mode */
 	param_get(_params_handles.idle_pwm_mc, &_params.idle_pwm_mc);
@@ -356,6 +354,21 @@ VtolAttitudeControl::Run()
 		_tecs_status_sub.update(&_tecs_status);
 		_land_detected_sub.update(&_land_detected);
 		vehicle_cmd_poll();
+
+        /* use external controller or local failsafe
+         * Note: if use_ext_ctrl = -1, then RC channel is used to change
+         * this parameter, otherwise the value from QGC is loaded
+         */
+	    param_get(_params_handles.use_ext_ctrl, &_params.use_ext_ctrl);
+        if( _params.use_ext_ctrl == -1 )
+        {
+            if(_manual_control_sp.gear_switch == 3)
+            {
+                _params.use_ext_ctrl = 1;
+            } else {
+                _params.use_ext_ctrl = 0;
+            }
+        }
 
 		// check if mc and fw sp were updated
 		bool mc_att_sp_updated = _mc_virtual_att_sp_sub.update(&_mc_virtual_att_sp);

@@ -343,6 +343,7 @@ void Tiltrotor::waiting_on_tecs()
 */
 void Tiltrotor::fill_actuator_outputs()
 {
+
     //printf("flag_control_position): %i\n",(int)_v_control_mode->flag_control_position_enabled);
     //printf("flag_control_offboard): %i\n",(int)_v_control_mode->flag_control_offboard_enabled);
     //printf("MPC command: %f\n",(double)_mpc_cmd->thrust);
@@ -350,10 +351,17 @@ void Tiltrotor::fill_actuator_outputs()
     //printf("MPC command: %f\n",(double)_mpc_cmd->torque_x);
     //printf("MPC command: %f\n",(double)_mpc_cmd->torque_y);
     //printf("MPC command: %f\n\n",(double)_mpc_cmd->torque_z);
-	// Multirotor output
     
+    static bool use_mpc = true;
+    static bool use_fpid = true;
+
     if ( _params -> use_ext_ctrl )
     {
+        if(use_mpc)
+        {
+            PX4_INFO("Using MPC controller\n");
+            use_mpc = false;
+        }
         // use external mpc controller
 	    _actuators_out_0->timestamp = hrt_absolute_time();
 	    _actuators_out_0->timestamp_sample = _mpc_cmd->timestamp;
@@ -380,7 +388,14 @@ void Tiltrotor::fill_actuator_outputs()
         _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE+1] = 
             (_mpc_cmd->thrust * sinf(_mpc_cmd->tilt_angle) )/ (4.0f * T_MAX);
 
+        use_fpid = true;
+
     } else {
+        if(use_fpid)
+        {
+            PX4_INFO("Using FPID controller\n");
+            use_fpid = false;
+        }
         // use fused pid controller
 	    _actuators_out_0->timestamp = hrt_absolute_time();
 	    _actuators_out_0->timestamp_sample = _actuators_mc_in->timestamp_sample;
@@ -404,17 +419,8 @@ void Tiltrotor::fill_actuator_outputs()
         _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE+1] =
             _actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE+1];
 
-//        printf("roll: %f\n",
-//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_ROLL]);
-//        printf("pitch: %f\n",
-//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_PITCH]);
-//        printf("yaw: %f\n",
-//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_YAW]);
-//        printf("thrust up: %f\n",
-//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE]);
-//        printf("thrust forward: %f\n",
-//                (double)_actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE+1]);
-//
+        use_mpc = true;
+
     }
 
     // airspeed

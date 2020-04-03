@@ -42,8 +42,9 @@
 /**
  * Use external Controller
  *
- * @unit bool
- * @group VTOL Attitude Control
+ * @value -1 determine from RC
+ * @value 0 use fused PID
+ * @value 1 use MPC
  */
 PARAM_DEFINE_INT32(VT_USE_EXT_CTRL, 1);
 

@@ -280,25 +280,23 @@ void FlightTaskManualAltitude::_respectGroundSlowdown()
 void FlightTaskManualAltitude::_rotateIntoHeadingFrame(Vector2f &v)
 {
     Vector3f v_B = Vector3f(v(0), v(1), 0.0f);
+
 	float yaw_rotate = PX4_ISFINITE(_yaw_setpoint) ? _yaw_setpoint : _yaw;
-    if ( v_B.norm() > 5.0f )
-    {
-    // Edit: use actual yaw for rotation into world frame
-	    yaw_rotate = _yaw;
-    }
+
 	Vector3f v_I = Vector3f(Dcmf(Eulerf(0.0f, 0.0f, yaw_rotate)) * v_B);
 	v(0) = v_I(0);
 	v(1) = v_I(1);
 }
 
-void FlightTaskManualAltitude::_updateHeadingSetpoints()
+void FlightTaskManualAltitude::_updateHeadingSetpoints(const Vector2f v)
 {
-	if (_isYawInput()) {
+	if (_isYawInput() || std::fabs(v(1)) > 0.4) {
 		_unlockYaw();
 
 	} else {
 		_lockYaw();
 	}
+
 }
 
 bool FlightTaskManualAltitude::_isYawInput()
@@ -339,14 +337,14 @@ void FlightTaskManualAltitude::_ekfResetHandlerHeading(float delta_psi)
 
 void FlightTaskManualAltitude::_updateSetpoints()
 {
-	_updateHeadingSetpoints(); // get yaw setpoint
+	Vector2f sp(&_sticks(0));
+	_updateHeadingSetpoints(sp); // get yaw setpoint
 
 	// Thrust in xy are extracted directly from stick inputs. A magnitude of
 	// 1 means that maximum thrust along xy is demanded. A magnitude of 0 means no
 	// thrust along xy is demanded. The maximum thrust along xy depends on the thrust
 	// setpoint along z-direction, which is computed in PositionControl.cpp.
 
-	Vector2f sp(&_sticks(0));
 	_rotateIntoHeadingFrame(sp);
 
 	if (sp.length() > 1.0f) {

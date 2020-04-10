@@ -82,11 +82,11 @@ int PreFlightCheck::rcCalibrationCheck(orb_advert_t *mavlink_log_pub, bool repor
 			int32_t transition_switch;
 			param_get(trans_parm, &transition_switch);
 
-			if (transition_switch < 1) {
-				if (report_fail) { mavlink_log_critical(mavlink_log_pub, "Transition switch RC_MAP_TRANS_SW not set."); }
+			//if (transition_switch < 1) {
+			//	if (report_fail) { mavlink_log_critical(mavlink_log_pub, "Transition switch RC_MAP_TRANS_SW not set."); }
 
-				map_fail_count++;
-			}
+			//	map_fail_count++;
+			//}
 		}
 	}
 

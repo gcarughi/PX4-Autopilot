@@ -152,40 +152,51 @@ void VtolType::update_mc_state_custom()
 	// copy virtual attitude setpoint to real attitude setpoint
 	memcpy(_v_att_sp, _mc_virtual_att_sp, sizeof(vehicle_attitude_setpoint_s));
   
-    float Tx = math::max(_fw_virtual_att_sp->thrust_body[0],0.001f);    
-    float Tz = math::min(_mc_virtual_att_sp->thrust_body[2],-0.001f);
-    float airspeed = (_local_pos->vx *cosf(_local_pos->yaw)) + (_local_pos->vy*sinf(_local_pos->yaw)); 
+    if ( !_params -> use_ext_ctrl )
+    {
+        // fused PID control
+        float Tx = math::max(_fw_virtual_att_sp->thrust_body[0],0.001f);    
+        float Tz = math::min(_mc_virtual_att_sp->thrust_body[2],-0.001f);
+        float airspeed = (_local_pos->vx *cosf(_local_pos->yaw)) + (_local_pos->vy*sinf(_local_pos->yaw)); 
 
-    float tchi;
-    float chi = math::constrain(0.08284f * (fabsf(airspeed)-3), 0.0f, 89.0f *(float)M_PI/180.0f);
-    tchi = tanf(chi);
+        float tchi;
+        float chi = math::constrain(0.08284f * (fabsf(airspeed)-3), 0.0f, 89.0f *(float)M_PI/180.0f);
+        tchi = tanf(chi);
 
-    float denom = 1/sqrtf(Tz*Tz*tchi*tchi + Tx*Tx);
-    float coeff_mc = math::constrain(25-fabsf(airspeed)-3,0.0f,25.0f);
-    float coeff_fw = math::constrain(fabsf(airspeed)-3,0.0f,25.0f);
-    float sum = coeff_mc + coeff_fw;
-    coeff_mc /= sum;
-    coeff_fw /= sum;
-    coeff_mc = math::constrain(coeff_mc, coeff_mc_prev-0.002f, coeff_mc_prev+0.002f);
-    coeff_fw = math::constrain(coeff_fw, coeff_fw_prev-0.002f, coeff_fw_prev+0.002f);
-    coeff_mc_prev = coeff_mc;
-    coeff_fw_prev = coeff_fw;
+        float denom = 1/sqrtf(Tz*Tz*tchi*tchi + Tx*Tx);
+        float coeff_mc = math::constrain(25-fabsf(airspeed)-3,0.0f,25.0f);
+        float coeff_fw = math::constrain(fabsf(airspeed)-3,0.0f,25.0f);
+        float sum = coeff_mc + coeff_fw;
+        coeff_mc /= sum;
+        coeff_fw /= sum;
+        coeff_mc = math::constrain(coeff_mc, coeff_mc_prev-0.002f, coeff_mc_prev+0.002f);
+        coeff_fw = math::constrain(coeff_fw, coeff_fw_prev-0.002f, coeff_fw_prev+0.002f);
+        coeff_mc_prev = coeff_mc;
+        coeff_fw_prev = coeff_fw;
 
-    _v_att_sp->roll_body = coeff_mc * _mc_virtual_att_sp->roll_body + coeff_fw * _fw_virtual_att_sp->roll_body;
-    _v_att_sp->pitch_body = coeff_mc * _mc_virtual_att_sp->pitch_body + coeff_fw * _fw_virtual_att_sp->pitch_body;
-    _v_att_sp->yaw_body = coeff_mc * _mc_virtual_att_sp->yaw_body + coeff_fw * _fw_virtual_att_sp->yaw_body;
-    // thrust x (forward)
-    _v_att_sp->thrust_body[0] = -tchi * Tx * Tz * denom;
-    _v_att_sp->thrust_body[1] = 0;
-    // thrust -z (up)
-    _v_att_sp->thrust_body[2] = -Tx * Tz * denom;
+        _v_att_sp->roll_body = coeff_mc * _mc_virtual_att_sp->roll_body + coeff_fw * _fw_virtual_att_sp->roll_body;
+        _v_att_sp->pitch_body = coeff_mc * _mc_virtual_att_sp->pitch_body + coeff_fw * _fw_virtual_att_sp->pitch_body;
+        _v_att_sp->yaw_body = coeff_mc * _mc_virtual_att_sp->yaw_body + coeff_fw * _fw_virtual_att_sp->yaw_body;
+        // thrust x (forward)
+        _v_att_sp->thrust_body[0] = -tchi * Tx * Tz * denom;
+        _v_att_sp->thrust_body[1] = 0;
+        // thrust -z (up)
+        _v_att_sp->thrust_body[2] = -Tx * Tz * denom;
 
-    matrix::Eulerf tmp_eul = matrix::Eulerf(matrix::Vector3f( _v_att_sp->roll_body, _v_att_sp->pitch_body, _v_att_sp->yaw_body));
-    matrix::Quatf tmp_quat = matrix::Quatf(tmp_eul);
-    _v_att_sp->q_d[0] = tmp_quat(0);
-    _v_att_sp->q_d[1] = tmp_quat(1);
-    _v_att_sp->q_d[2] = tmp_quat(2);
-    _v_att_sp->q_d[3] = tmp_quat(3);
+        matrix::Eulerf tmp_eul = matrix::Eulerf(matrix::Vector3f( _v_att_sp->roll_body, _v_att_sp->pitch_body, _v_att_sp->yaw_body));
+        matrix::Quatf tmp_quat = matrix::Quatf(tmp_eul);
+        _v_att_sp->q_d[0] = tmp_quat(0);
+        _v_att_sp->q_d[1] = tmp_quat(1);
+        _v_att_sp->q_d[2] = tmp_quat(2);
+        _v_att_sp->q_d[3] = tmp_quat(3);
+
+    } else {
+        // mpc with potential attitude control
+        _v_att_sp->q_d[0] = _mpc_cmd->q[0];
+        _v_att_sp->q_d[1] = _mpc_cmd->q[1];
+        _v_att_sp->q_d[2] = _mpc_cmd->q[2];
+        _v_att_sp->q_d[3] = _mpc_cmd->q[3];
+    }
 
 }
 

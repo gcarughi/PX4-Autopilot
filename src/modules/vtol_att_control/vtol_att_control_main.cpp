@@ -62,6 +62,7 @@ VtolAttitudeControl::VtolAttitudeControl() :
 	_params.vtol_motor_id = 0;
 
 	_params_handles.use_ext_ctrl = param_find("VT_USE_EXT_CTRL");
+	_params_handles.use_att_ctrl = param_find("VT_USE_ATT_CTRL");
 	_params_handles.idle_pwm_mc = param_find("VT_IDLE_PWM_MC");
 	_params_handles.vtol_motor_id = param_find("VT_MOT_ID");
 	_params_handles.vtol_fw_permanent_stab = param_find("VT_FW_PERM_STAB");
@@ -212,6 +213,9 @@ VtolAttitudeControl::parameters_update()
 {
 	float v;
 	int32_t l;
+
+    /* low level attitude controller */
+	param_get(_params_handles.use_att_ctrl, &_params.use_att_ctrl);
 
 	/* idle pwm for mc mode */
 	param_get(_params_handles.idle_pwm_mc, &_params.idle_pwm_mc);

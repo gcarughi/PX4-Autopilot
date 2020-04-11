@@ -189,6 +189,7 @@ private:
 
 	struct {
 		param_t use_ext_ctrl;
+		param_t use_att_ctrl;
 		param_t idle_pwm_mc;
 		param_t vtol_motor_id;
 		param_t vtol_fw_permanent_stab;

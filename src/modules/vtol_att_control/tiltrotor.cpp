@@ -346,6 +346,10 @@ void Tiltrotor::fill_actuator_outputs()
 
     //printf("flag_control_position): %i\n",(int)_v_control_mode->flag_control_position_enabled);
     //printf("flag_control_offboard): %i\n",(int)_v_control_mode->flag_control_offboard_enabled);
+    //printf("MPC command: %f\n",(double)_mpc_cmd->q[0]);
+    //printf("MPC command: %f\n",(double)_mpc_cmd->q[1]);
+    //printf("MPC command: %f\n",(double)_mpc_cmd->q[2]);
+    //printf("MPC command: %f\n",(double)_mpc_cmd->q[3]);
     //printf("MPC command: %f\n",(double)_mpc_cmd->thrust);
     //printf("MPC command: %f\n",(double)_mpc_cmd->tilt_angle);
     //printf("MPC command: %f\n",(double)_mpc_cmd->torque_x);
@@ -368,19 +372,35 @@ void Tiltrotor::fill_actuator_outputs()
 
         float M_MAX = 2.0f;
         float T_MAX = 12.0f;
-        //float chi_max = math::radians(90.0f);
-        //float chi_min = math::radians(-10.0f);
 
-        // note: these values need to be normalized to [-1,1]
-        // roll torque
-        _actuators_out_0->control[actuator_controls_s::INDEX_ROLL] = 
-            _mpc_cmd->torque_x / M_MAX;
-        // pitch torque
-        _actuators_out_0->control[actuator_controls_s::INDEX_PITCH] = 
-            _mpc_cmd->torque_y / M_MAX;
-        // yaw torque
-        _actuators_out_0->control[actuator_controls_s::INDEX_YAW] = 
-            _mpc_cmd->torque_z / M_MAX;
+        if ( _params -> use_att_ctrl )
+        {
+            // combine MPC torque commands with low level attitude controller
+            // roll torque
+            _actuators_out_0->control[actuator_controls_s::INDEX_ROLL] = 
+                (_actuators_mc_in->control[actuator_controls_s::INDEX_ROLL]
+                + _mpc_cmd->torque_x) / M_MAX;
+            // pitch torque
+            _actuators_out_0->control[actuator_controls_s::INDEX_PITCH] = 
+                (_actuators_mc_in->control[actuator_controls_s::INDEX_PITCH]
+                + _mpc_cmd->torque_y) / M_MAX;
+            // yaw torque
+            _actuators_out_0->control[actuator_controls_s::INDEX_YAW] = 
+                (_actuators_mc_in->control[actuator_controls_s::INDEX_YAW]
+                + _mpc_cmd->torque_z) / M_MAX;
+        } else {
+            // use only MPC torque commands
+            // roll torque
+            _actuators_out_0->control[actuator_controls_s::INDEX_ROLL] = 
+                _mpc_cmd->torque_x / M_MAX;
+            // pitch torque
+            _actuators_out_0->control[actuator_controls_s::INDEX_PITCH] = 
+                _mpc_cmd->torque_y / M_MAX;
+            // yaw torque
+            _actuators_out_0->control[actuator_controls_s::INDEX_YAW] = 
+                _mpc_cmd->torque_z / M_MAX;
+        }
+
         // thrust z
         _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE] = 
             (_mpc_cmd->thrust * cosf(_mpc_cmd->tilt_angle) )/ (4.0f * T_MAX);

@@ -49,6 +49,14 @@
 PARAM_DEFINE_INT32(VT_USE_EXT_CTRL, 1);
 
 /**
+ * Use low level attitude controller with MPC
+ *
+ * @value 0 use only MPC
+ * @value 1 use attitude controller on top of MPC
+ */
+PARAM_DEFINE_INT32(VT_USE_ATT_CTRL, 1);
+
+/**
  * Idle speed of VTOL when in multicopter mode
  *
  * @unit us

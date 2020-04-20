@@ -186,8 +186,8 @@ void FlightTaskManualAltitude::_updateAltitudeLock()
 
 		} else  {
 			// user demands velocity change
-			//_position_setpoint(2) = NAN;
-			_position_setpoint(2) = _position(2) + _deltatime * _velocity_setpoint(2);
+			_position_setpoint(2) = NAN;
+			//_position_setpoint(2) = _position(2) + _deltatime * _velocity_setpoint(2);
 			// ensure that maximum altitude is respected
 			_respectMaxAltitude();
 		}
@@ -312,10 +312,10 @@ bool FlightTaskManualAltitude::_isYawInput()
 void FlightTaskManualAltitude::_unlockYaw()
 {
 	// no fixed heading when rotating around yaw by stick
-	//_yaw_setpoint = NAN;
+	_yaw_setpoint = NAN;
     
     // integrate yawrate when rotation around yaw by stick
-	_yaw_setpoint = _yaw + _deltatime * _yawspeed_setpoint;
+	//_yaw_setpoint = _yaw + _deltatime * _yawspeed_setpoint;
 
 }
 

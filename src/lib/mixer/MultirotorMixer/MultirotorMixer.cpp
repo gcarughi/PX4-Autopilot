@@ -332,7 +332,7 @@ void MultirotorMixer::mix_yaw(float yaw, float *outputs)
 	minimize_saturation(_tmp_array, outputs, _saturation_status, 0.f, 1.f, true);
 }
 
-void MultirotorMixer::mix_vtol(float roll, float pitch, float yaw, float thrust, float *outputs){
+void MultirotorMixer::mix_vtol(float *outputs){
 
     float h_0 = 0.015f;
     float L_0 = 0.29f;
@@ -560,15 +560,43 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 		return 0;
 	}
 
-	float roll    = math::constrain(get_control(0, 0) * _roll_scale, -1.0f, 1.0f);
-	float pitch   = math::constrain(get_control(0, 1) * _pitch_scale, -1.0f, 1.0f);
-	float yaw     = math::constrain(get_control(0, 2) * _yaw_scale, -1.0f, 1.0f);
-	float thrust  = math::constrain(get_control(0, 3), 0.0f, 1.0f);
+	//float roll    = math::constrain(get_control(0, 0) * _roll_scale, -1.0f, 1.0f);
+	//float pitch   = math::constrain(get_control(0, 1) * _pitch_scale, -1.0f, 1.0f);
+	//float yaw     = math::constrain(get_control(0, 2) * _yaw_scale, -1.0f, 1.0f);
+	//float thrust  = math::constrain(get_control(0, 3), 0.0f, 1.0f);
 
 	// clean out class variable used to capture saturation
 	_saturation_status.value = 0;
 
-    mix_vtol(roll, pitch, yaw, thrust, outputs);
+    mix_vtol(outputs);
+
+	// check for tilt angle saturation against slew rate limits
+	if (_delta_out_max > 0.0f) {
+        // left side tilt saturation
+		float delta_out_chi_l = outputs[4] - _outputs_prev[4];
+		if (delta_out_chi_l > _delta_out_max) {
+			outputs[4] = _outputs_prev[4] + _delta_out_max;
+
+		} else if (delta_out_chi_l < -_delta_out_max) {
+			outputs[4] = _outputs_prev[4] - _delta_out_max;
+		}
+
+        // right side tilt saturation
+		float delta_out_chi_r = outputs[5] - _outputs_prev[5];
+		if (delta_out_chi_r > _delta_out_max) {
+			outputs[5] = _outputs_prev[5] + _delta_out_max;
+		} else if (delta_out_chi_r < -_delta_out_max) {
+			outputs[5] = _outputs_prev[5] - _delta_out_max;
+		}
+	}
+
+	_outputs_prev[4] = outputs[4];
+	_outputs_prev[5] = outputs[5];
+
+
+	// this will force the caller of the mixer to always supply new slew rate values, otherwise no slew rate limiting will happen
+	_delta_out_max = 0.0f;
+
     return 7;
 
 	// Do the mixing using the strategy given by the current Airmode configuration
@@ -645,9 +673,9 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 	//}
 
 	// this will force the caller of the mixer to always supply new slew rate values, otherwise no slew rate limiting will happen
-	_delta_out_max = 0.0f;
+	//_delta_out_max = 0.0f;
 
-	return _rotor_count;
+	//return _rotor_count;
 }
 
 /*

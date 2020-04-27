@@ -113,7 +113,7 @@ static constexpr unsigned UPDATE_INTERVAL_MIN{2};	// 2 ms	-> 500 Hz
 static constexpr unsigned UPDATE_INTERVAL_MAX{100};	// 100 ms -> 10 Hz
 
 #define ORB_CHECK_INTERVAL		200000		// 200 ms -> 5 Hz
-#define IO_POLL_INTERVAL		20000		// 20 ms -> 50 Hz
+#define IO_POLL_INTERVAL		4000		// 4 ms -> 250 Hz
 
 using namespace time_literals;
 
@@ -975,6 +975,7 @@ PX4IO::task_main()
 		}
 
 		if (now >= poll_last + IO_POLL_INTERVAL) {
+
 			/* run at 50-250Hz */
 			poll_last = now;
 
@@ -1218,6 +1219,14 @@ PX4IO::task_main()
 
 				if (parm_handle != PARAM_INVALID) {
 					param_get(parm_handle, &param_val);
+                    // constrain this to 3.2, otherwise we have integer
+                    // overflow and it will not be loaded correctly
+                    // in the mixer 
+                    if ( param_val > 3.2f )
+                    {
+                        PX4_WARN("MOT_SLEW_MAX too large for register conversion, constrained to 3.2");
+                        param_val = 3.2f;
+                    }
 					(void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_MOTOR_SLEW_MAX, FLOAT_TO_REG(param_val));
 				}
 

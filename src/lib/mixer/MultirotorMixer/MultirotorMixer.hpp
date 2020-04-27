@@ -244,7 +244,7 @@ private:
 	 *
      * VTOL mixer to assign rotor thrusts and tilt angles
 	 */
-	inline void mix_vtol(float roll, float pitch, float yaw, float thrust, float *outputs);
+	inline void mix_vtol(float *outputs);
 
 
 	void update_saturation_status(unsigned index, bool clipping_high, bool clipping_low_roll_pitch, bool clipping_low_yaw);

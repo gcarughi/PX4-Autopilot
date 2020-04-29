@@ -357,7 +357,8 @@ void Tiltrotor::fill_actuator_outputs()
     //printf("MPC command: %f\n\n",(double)_mpc_cmd->torque_z);
     
     static bool use_mpc = true;
-    static bool use_fpid = true;
+    static bool use_fpid= true;
+    float chi_MAX       = math::radians(90.0f);
 
     if ( _params -> use_ext_ctrl )
     {
@@ -370,8 +371,8 @@ void Tiltrotor::fill_actuator_outputs()
 	    _actuators_out_0->timestamp = hrt_absolute_time();
 	    _actuators_out_0->timestamp_sample = _mpc_cmd->timestamp;
 
-        float M_MAX = 2.0f;
-        float T_MAX = 12.0f;
+        float M_MAX     = 2.0f;
+        float T_MAX     = 48.0f;
 
         if ( _params -> use_att_ctrl )
         {
@@ -401,12 +402,13 @@ void Tiltrotor::fill_actuator_outputs()
                 _mpc_cmd->torque_z / M_MAX;
         }
 
-        // thrust z
+        // thrust
         _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE] = 
-            (_mpc_cmd->thrust * cosf(_mpc_cmd->tilt_angle) )/ (4.0f * T_MAX);
-        // thrust x
+            _mpc_cmd->thrust / T_MAX;
+
+        // tilt angle
         _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE+1] = 
-            (_mpc_cmd->thrust * sinf(_mpc_cmd->tilt_angle) )/ (4.0f * T_MAX);
+            _mpc_cmd->tilt_angle / chi_MAX;
 
         use_fpid = true;
 
@@ -432,12 +434,20 @@ void Tiltrotor::fill_actuator_outputs()
         // yaw torque
         _actuators_out_0->control[actuator_controls_s::INDEX_YAW] = 
             _actuators_mc_in->control[actuator_controls_s::INDEX_YAW];
-        // -z thrust (up)
-        _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE] =
-            _actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE];
-        // x thrust (forward)
-        _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE+1] =
+
+        float Tx = 
             _actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE+1];
+        float Tz = 
+            _actuators_mc_in->control[actuator_controls_s::INDEX_THROTTLE];
+        float chi_cmd = atan2f( Tx, Tz );
+
+        // thrust
+        _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE] =
+            sqrtf( Tx * Tx + Tz * Tz );
+
+        // tilt angle
+        _actuators_out_0->control[actuator_controls_s::INDEX_THROTTLE+1] =
+            chi_cmd / chi_MAX;
 
         use_mpc = true;
 

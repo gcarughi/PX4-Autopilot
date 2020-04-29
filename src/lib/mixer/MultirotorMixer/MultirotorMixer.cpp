@@ -334,31 +334,28 @@ void MultirotorMixer::mix_yaw(float yaw, float *outputs)
 
 void MultirotorMixer::mix_vtol(float *outputs){
 
-    float h_0 = 0.015f;
-    float L_0 = 0.29f;
-    float l_1 = 0.1575f;
-    float l_3 = 0.105f;
-    float l_4 = 0.105f;
-    float C_T = 1.11919e-5f;
-    float C_Q = 1.99017e-7f;
-    float C = C_Q / C_T;
-    float T_MAX = 12.0f;
-    //float chi_max = math::radians(90.0f);
-    //float chi_min = math::radians(-10.0f);
+    // platform parameters
+    float h_0   = 0.015f;
+    float L_0   = 0.29f;
+    float l_1   = 0.1575f;
+    float l_3   = 0.105f;
+    float l_4   = 0.105f;
+    float C_T   = 1.11919e-5f;
+    float C_Q   = 1.99017e-7f;
+    float C     = C_Q / C_T;
     float d_chi_max = math::radians(10.0f);
 
     //aerodynamics
-    float C_La = 0.058649f;
-    float C_Me = 0.55604f;
-    float C_Nr = 0.055604f;
-    float S = 0.4266f;
-    float b = 2.0f;
+    float C_La  = 0.058649f;
+    float C_Me  = 0.55604f;
+    float C_Nr  = 0.055604f;
+    float S     = 0.4266f;
+    float b     = 2.0f;
     float c_bar = 0.2f;
 
     float L_factor = C_La * S * b;
     float M_factor = C_Me * S * c_bar;
     float N_factor = C_Nr * S * b;
-
 
     float delta_min = math::radians(-35.0f);
     float delta_max = math::radians(35.0f);
@@ -368,50 +365,42 @@ void MultirotorMixer::mix_vtol(float *outputs){
 	float M         = math::constrain(get_control(0, 1), -1.0f, 1.0f);
 	float N         = math::constrain(get_control(0, 2), -1.0f, 1.0f);
 
-	float Tz         = math::constrain(get_control(0, 3), -1.0f, 1.0f);
-	float Tx         = math::constrain(get_control(0, 4), -1.0f, 1.0f);
-    Tz *= 4.0f * T_MAX;
-    Tx *= 4.0f * T_MAX;
-    //T = T * 4.0f * T_MAX;
-    float chi_cmd = atan2f( Tx, Tz );
+    float T         = math::constrain(get_control(0, 3), 0.0f, 1.0f);
+    float chi_cmd   = math::constrain(get_control(0,4), -1.0f, 1.0f);
 
-    float M_MAX = 2.0f;
-    float AIRSPEED_MAX = 40.0f;
-    L = L * M_MAX;
-    M = M * M_MAX;
-    N = N * M_MAX;
+	float airspd    = math::constrain(get_control(0, 5), 1e-8f, 1.0f);
 
+    // denormalize
+    float T_MAX     = 48.0f;
+    float chi_MAX   = math::radians(90.0f);
+    float M_MAX     = 2.0f;
+    float AIRSPD_MAX= 40.0f;
 
-	//float chi_cmd   = math::constrain(get_control(0, 4), -1.0f, 1.0f);
-    //chi_cmd = ( chi_max - chi_min ) * chi_cmd + chi_min;
+    L       *= M_MAX;
+    M       *= M_MAX;
+    N       *= M_MAX;
 
-	float airspeed  = math::constrain(get_control(0, 5), 1e-8f, 1.0f);
-    airspeed = AIRSPEED_MAX * airspeed;
+    T       *= T_MAX;
+    chi_cmd *= chi_MAX;
 
+    airspd  *= AIRSPD_MAX;
 
-    float q_bar = 0.5f * 1.2f * airspeed * airspeed;
+    // control surface deflections
+    float q_bar = 0.5f * 1.2f * airspd * airspd;
     float L_ = L_factor * q_bar;
     float M_ = M_factor * q_bar;
     float N_ = N_factor * q_bar;
 
-
     // scale with airspeed to avoid bang-bang behaviour at low speeds
-    float scale = math::constrain( (airspeed - 4.0f)/6.0f, 0.0f, 1.0f);
+    float scale = math::constrain( (airspd - 4.0f)/6.0f, 0.0f, 1.0f);
     
     float delta_a = math::constrain( L/L_*scale,  delta_min, delta_max );
     float delta_e = math::constrain( M/M_*scale, delta_min, delta_max );
     float delta_r = math::constrain( N/N_*scale,   delta_min, delta_max );
 
-    //printf("chi_c: %f\n",(double)chi_cmd);
-    //printf("delta_a: %f\n",(double)delta_a);
-    //printf("delta_e: %f\n",(double)delta_e);
-    //printf("delta_r: %f\n",(double)delta_r);
-
     L -= L_ * delta_a;
     M -= M_ * delta_e;
     N -= N_ * delta_r;
-
-    //thrust = 4.0f * T_MAX * thrust;
 
     float t1, t2, t3, t4, d_chi_r, d_chi_l, chi_r, chi_l;
 
@@ -518,8 +507,8 @@ void MultirotorMixer::mix_vtol(float *outputs){
     
     float v[8];
     for( int i=0; i<=7; i++){
-        v[i] =    A_pinv[5*i]     * Tx
-                + A_pinv[5*i + 1] * Tz
+        v[i] =    A_pinv[5*i]     * T * sinf( chi_cmd )
+                + A_pinv[5*i + 1] * T * cosf( chi_cmd )
                 + A_pinv[5*i + 2] * L
                 + A_pinv[5*i + 3] * M
                 + A_pinv[5*i + 4] * N;

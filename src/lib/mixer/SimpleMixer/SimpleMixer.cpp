@@ -240,21 +240,25 @@ out:
 unsigned
 SimpleMixer::mix(float *outputs, unsigned space)
 {
-    float M,N, airspeed;
-    float AIRSPEED_MAX = 40.0f;
 
     // note: rest is assigned in multirotor mixer
-    // TODO: check normalization
+    // load inputs
+    float M,N, airspd;
     _control_cb(_cb_handle, 0, 1, M);
-    M = math::constrain(M, -6.0f, 6.0f);
+    M = math::constrain(M, -1.0f, 1.0f);
 
     _control_cb(_cb_handle, 0, 2, N);
-    N = math::constrain(N, -6.0f, 6.0f);
+    N = math::constrain(N, -1.0f, 1.0f);
 
-    _control_cb(_cb_handle, 0, 5, airspeed);
+    _control_cb(_cb_handle, 0, 5, airspd);
+	airspd  = math::constrain( airspd, 1e-8f, 1.0f);
 
-	airspeed  = math::constrain( airspeed, 1e-8f, 1.0f);
-    airspeed = AIRSPEED_MAX * airspeed;
+    // denormalize
+    float M_MAX     = 2.0f;
+    float AIRSPD_MAX= 40.0f;
+    M       *= M_MAX;
+    N       *= M_MAX;
+    airspd  *= AIRSPD_MAX;
 
     float C_Me = 0.55604;
     float C_Nr = 0.055604;
@@ -267,27 +271,16 @@ SimpleMixer::mix(float *outputs, unsigned space)
     float M_factor = C_Me * S * c_bar;
     float N_factor = C_Nr * S * b;
 
-
-
-    float q_bar = 0.5f * 1.2f * airspeed * airspeed;
+    float q_bar = 0.5f * 1.2f * airspd * airspd;
     float M_ = M_factor * q_bar;
     float N_ = N_factor * q_bar;
 
 
     // scale with airspeed to avoid bang-bang behaviour at low speeds
-    float scale = math::constrain( (airspeed - 4.0f)/6.0f, 0.0f, 1.0f);
+    float scale = math::constrain( (airspd - 4.0f)/6.0f, 0.0f, 1.0f);
     
     float delta_e = math::constrain( M/M_*scale, delta_min, delta_max );
     float delta_r = math::constrain( N/N_*scale,   delta_min, delta_max );
-
-    //_control_cb(_cb_handle, 0, 3, thrustZ);
-    //thrustZ = math::constrain(-48*thrustZ, -48.0f, 0.0f);
-
-    //_control_cb(_cb_handle, 0, 4, thrustX);
-    //thrustX = math::constrain(48*thrustX, 0.0f, 48.0f);
-
-    //_control_cb(_cb_handle, 0, 5, airspeed);
-    //airspeed = math::constrain(40*airspeed, 0.0f, 40.0f);
 
     outputs[0] = (2.0f * delta_e - (delta_max + delta_min))/(delta_max - delta_min);
     outputs[1] = (2.0f * delta_r - (delta_max + delta_min))/(delta_max - delta_min);

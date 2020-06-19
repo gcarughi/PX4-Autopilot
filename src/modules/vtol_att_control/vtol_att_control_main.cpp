@@ -91,14 +91,15 @@ VtolAttitudeControl::VtolAttitudeControl() :
 	/* fetch initial parameter values */
 	parameters_update();
 
-	if (static_cast<vtol_type>(_params.vtol_type) == vtol_type::TAILSITTER) {
-		_vtol_type = new Tailsitter(this);
+	//if (static_cast<vtol_type>(_params.vtol_type) == vtol_type::TAILSITTER) {
+	//	_vtol_type = new Tailsitter(this);
 
-	} else if (static_cast<vtol_type>(_params.vtol_type) == vtol_type::TILTROTOR) {
+	//} else if (static_cast<vtol_type>(_params.vtol_type) == vtol_type::TILTROTOR) {
+	if (static_cast<vtol_type>(_params.vtol_type) == vtol_type::TILTROTOR) {
 		_vtol_type = new Tiltrotor(this);
 
-	} else if (static_cast<vtol_type>(_params.vtol_type) == vtol_type::STANDARD) {
-		_vtol_type = new Standard(this);
+	//} else if (static_cast<vtol_type>(_params.vtol_type) == vtol_type::STANDARD) {
+	//	_vtol_type = new Standard(this);
 
 	} else {
 		exit_and_cleanup();

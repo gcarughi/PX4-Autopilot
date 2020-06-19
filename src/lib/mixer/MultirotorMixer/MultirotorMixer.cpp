@@ -514,8 +514,9 @@ void MultirotorMixer::mix_vtol(float *outputs){
                 + A_pinv[5*i + 4] * N;
     }
 
-    d_chi_r = atan2f( v[0] + v[2] , v[1] + v[3] );
-    d_chi_l = atan2f( v[4] + v[6] , v[5] + v[7] );
+    scale = math::constrain( 0.25f*(T - 2.0f), 0.0f, 1.0f);
+    d_chi_r = scale * atan2f( v[0] + v[2] , v[1] + v[3] );
+    d_chi_l = scale * atan2f( v[4] + v[6] , v[5] + v[7] );
 
 
     //printf("d_chi_r alloc: %f\n",(double)d_chi_r);
